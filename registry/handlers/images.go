@@ -15,6 +15,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
+
 	"github.com/gorilla/handlers"
 )
 
@@ -185,6 +186,35 @@ func (imh *imageManifestHandler) GetImageManifest(w http.ResponseWriter, r *http
 	w.Write(p)
 }
 
+func GetTagManifests(imh *imageManifestHandler) (*schema2.DeserializedManifest, error) {
+	manifests, err := imh.Repository.Manifests(imh)
+	if err != nil {
+		err = append(imh.Errors, err)
+		return nil, err
+	}
+	var manifest distribution.Manifest
+	if imh.Tag != "" {
+		tags := imh.Repository.Tags(imh)
+		desc, err := tags.Get(imh, imh.Tag)
+		if err != nil {
+			err = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(err))
+			return nil, err
+		}
+		imh.Digest = desc.Digest
+	}
+	var options []distribution.ManifestServiceOption
+	if imh.Tag != "" {
+		options = append(options, distribution.WithTag(imh.Tag))
+	}
+	manifest, err = manifests.Get(imh, imh.Digest, options...)
+	if err != nil {
+		err = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(err))
+		return nil, err
+	}
+	schema2Manifest, _ := manifest.(*schema2.DeserializedManifest)
+	return schema2Manifest, nil
+}
+
 func (imh *imageManifestHandler) convertSchema2Manifest(schema2Manifest *schema2.DeserializedManifest) (distribution.Manifest, error) {
 	targetDescriptor := schema2Manifest.Target()
 	blobs := imh.Repository.Blobs(imh)
@@ -334,6 +364,11 @@ func (imh *imageManifestHandler) PutImageManifest(w http.ResponseWriter, r *http
 		ctxu.GetLogger(imh).Errorf("error building manifest url from digest: %v", err)
 	}
 
+	cacheservice := imh.Repository.Caches(imh)
+	cacheservice.CreateTagListCache(imh)
+	cacheservice.CreateCatalogCache(imh, 1)
+	name := getName(imh)
+	CreateAndSaveTagInfo(imh, name)
 	w.Header().Set("Location", location)
 	w.Header().Set("Docker-Content-Digest", imh.Digest.String())
 	w.WriteHeader(http.StatusCreated)

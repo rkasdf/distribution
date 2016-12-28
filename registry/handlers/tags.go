@@ -35,18 +35,26 @@ type tagsAPIResponse struct {
 func (th *tagsHandler) GetTags(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	tagService := th.Repository.Tags(th)
-	tags, err := tagService.All(th)
+	cacheService := th.Repository.Caches(th)
+	tags, err := cacheService.GetTagList(th)
 	if err != nil {
-		switch err := err.(type) {
-		case distribution.ErrRepositoryUnknown:
-			th.Errors = append(th.Errors, v2.ErrorCodeNameUnknown.WithDetail(map[string]string{"name": th.Repository.Named().Name()}))
-		case errcode.Error:
-			th.Errors = append(th.Errors, err)
-		default:
-			th.Errors = append(th.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		err = cacheService.CreateTagListCache(th)
+		if err != nil {
+			switch err := err.(type) {
+			case distribution.ErrRepositoryUnknown:
+				th.Errors = append(th.Errors, v2.ErrorCodeNameUnknown.WithDetail(map[string]string{"name": th.Repository.Named().Name()}))
+			case errcode.Error:
+				th.Errors = append(th.Errors, err)
+			default:
+				th.Errors = append(th.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+			}
+			return
 		}
-		return
+		tags, err = cacheService.GetTagList(th)
+		if err != nil {
+			th.Errors = append(th.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

@@ -228,6 +228,26 @@ type BlobWriter interface {
 	Cancel(ctx context.Context) error
 }
 
+// BlobCache will cache the catalog and taglist json, which will speed the api get.
+type BlobCache interface {
+	// CacheCatalog will cache the registry catalog.
+	CacheCatalog(ctx context.Context, content []byte) error
+	// GetCatalog will get the cache in the storage.
+	GetCatalog(ctx context.Context) ([]byte, error)
+	// CacheTagList will cache the taglist in the storage.
+	CacheTagList(ctx context.Context, content []byte, name string) error
+	// GetTagList will get the taglist which store in the storage.
+	GetTagList(ctx context.Context, name string) ([]byte, error)
+	SaveTagInfo(ctx context.Context, content []byte, name, tag string) error
+	GetTagInfo(ctx context.Context, name, tag string) ([]byte, error)
+
+	GetImageItemList(ctx context.Context, name string) ([]string, error)
+	GetTagItemList(ctx context.Context, name, tag string) ([]string, error)
+	SaveImageItem(ctx context.Context, w http.ResponseWriter, r *http.Request, name, item string) error
+	SaveTagItem(ctx context.Context, w http.ResponseWriter, r *http.Request, name, tag, item string) error
+	ServeItem(ctx context.Context, w http.ResponseWriter, r *http.Request, path, item string) error
+}
+
 // BlobService combines the operations to access, read and write blobs. This
 // can be used to describe remote blob services.
 type BlobService interface {

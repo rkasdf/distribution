@@ -14,6 +14,7 @@ import (
 type registry struct {
 	blobStore                    *blobStore
 	blobServer                   *blobServer
+	blobCache                    *blobCache
 	statter                      *blobStatter // global statter service.
 	blobDescriptorCacheProvider  cache.BlobDescriptorCacheProvider
 	deleteEnabled                bool
@@ -106,6 +107,9 @@ func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, option
 			statter: statter,
 			pathFn:  bs.path,
 		},
+		blobCache: &blobCache{
+			driver: driver,
+		},
 		statter:                statter,
 		resumableDigestEnabled: true,
 	}
@@ -152,6 +156,10 @@ func (reg *registry) Blobs() distribution.BlobEnumerator {
 
 func (reg *registry) BlobStatter() distribution.BlobStatter {
 	return reg.statter
+}
+
+func (reg *registry) BlobCache() distribution.BlobCache {
+	return reg.blobCache
 }
 
 // repository provides name-scoped access to various services.
@@ -276,4 +284,12 @@ func (repo *repository) Blobs(ctx context.Context) distribution.BlobStore {
 		deleteEnabled:          repo.registry.deleteEnabled,
 		resumableDigestEnabled: repo.resumableDigestEnabled,
 	}
+}
+
+func (repo *repository) Caches(ctx context.Context) distribution.CacheService {
+	caches := &cacheStore{
+		repository: repo,
+		blobCache:  repo.registry.blobCache,
+	}
+	return caches
 }

@@ -196,6 +196,69 @@ func (r *repository) Tags(ctx context.Context) distribution.TagService {
 	}
 }
 
+func (r *repository) Caches(ctx context.Context) distribution.CacheService {
+	return &caches{
+		client:  r.client,
+		ub:      r.ub,
+		context: r.context,
+		name:    r.Named(),
+	}
+}
+
+type caches struct {
+	client  *http.Client
+	ub      *v2.URLBuilder
+	context context.Context
+	name    reference.Named
+}
+
+func (c *caches) CreateCatalogCache(ctx context.Context, size int) error {
+	return nil
+}
+func (c *caches) CreateTagListCache(ctx context.Context) error {
+	return nil
+}
+
+func (c *caches) GetCatalog(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
+
+func (c *caches) GetTagList(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
+
+func (c *caches) SaveTagInfo(ctx context.Context, tag string, content []byte) error {
+	return nil
+}
+
+func (c *caches) GetTagInfo(ctx context.Context, tag string) ([]byte, error) {
+	return nil, nil
+}
+
+func (c *caches) GetImageItemList(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
+
+func (c *caches) GetTagItemList(ctx context.Context, tag string) ([]string, error) {
+	return nil, nil
+}
+
+func (c *caches) SaveImageItem(ctx context.Context, w http.ResponseWriter, r *http.Request, item string) error {
+	return nil
+}
+
+func (c *caches) GetImageItem(ctx context.Context, w http.ResponseWriter, r *http.Request, item string) error {
+	return nil
+}
+
+func (c *caches) SaveTagItem(ctx context.Context, w http.ResponseWriter, r *http.Request, tag, item string) error {
+	return nil
+}
+
+func (c *caches) GetTagItem(ctx context.Context, w http.ResponseWriter, r *http.Request, tag, item string) error {
+	return nil
+}
+
 // tags implements remote tagging operations.
 type tags struct {
 	client  *http.Client

@@ -26,6 +26,14 @@ var (
 		Description: `Tag or digest of the target manifest.`,
 	}
 
+	itemParameterDescriptor = ParameterDescriptor{
+		Name:        "item",
+		Type:        "string",
+		Format:      reference.TagRegexp.String(),
+		Required:    true,
+		Description: `item name .`,
+	}
+
 	uuidParameterDescriptor = ParameterDescriptor{
 		Name:        "uuid",
 		Type:        "opaque",
@@ -191,6 +199,22 @@ const (
    "history": <v1 images>,
    "signature": <JWS>
 }`
+	taginfoBody = `{
+   "name": <name>,
+   "tag": <tag>,
+   "createTime": <createTime>,
+   "size": <size>
+}`
+	itemNameListBody = `{
+   "nameList": [
+      <name>,
+      ...
+   ]
+	}`
+	itemBody = `{
+   "name": <name>,
+   "content": <content>
+	}`
 
 	errorsBody = `{
 	"errors:" [
@@ -488,6 +512,378 @@ var routeDescriptors = []RouteDescriptor{
 		},
 	},
 	{
+		Name:        RouteNameInfo,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/taginfo/{tag:" + reference.TagRegexp.String() + "}",
+		Entity:      "TagInfo",
+		Description: "Get tag info.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Fetch the tag info identified by `name` and `tag` . A `HEAD` request can also be issued to this endpoint to obtain resource information without receiving all data.",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							referenceParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The manifest identified by `name` and `tag`. The contents can be used to identify and resolve resources required to run the specified image.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									digestHeader,
+								},
+								Body: BodyDescriptor{
+									ContentType: "<media type of tagInfo>",
+									Format:      manifestBody,
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Description: "The name or reference was invalid.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+									ErrorCodeTagInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		Name:        RouteNameImageItemList,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/item/list",
+		Entity:      "itemNameList",
+		Description: "Get item list.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Fetch the customized file name list identified by `name` ",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The manifest identified by `name` and `tag`. The contents can be used to identify and resolve resources required to run the specified image.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									digestHeader,
+								},
+								Body: BodyDescriptor{
+									ContentType: "<media type of tagInfo>",
+									Format:      itemNameListBody,
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Description: "The name was invalid.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		Name:        RouteNameImageItem,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/item/{itemname:" + reference.TagRegexp.String() + "}",
+		Entity:      "itemBody",
+		Description: "Get image iten name list.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Fetch the image item name list identified by `name` ",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							itemParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The manifest identified by `name` and `tag`. The contents can be used to identify and resolve resources required to run the specified image.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									digestHeader,
+								},
+								Body: BodyDescriptor{
+									ContentType: "ContentType: application/octect-stream",
+									Format:      "<binary data>",
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Description: "The name was invalid.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+			{
+				Method:      "POST",
+				Description: "To post the user update item file.",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							itemParameterDescriptor,
+						},
+						Body: BodyDescriptor{
+							ContentType: "application/octect-stream",
+							Format:      "<binary data>",
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The blob has been created in the registry and is available at the provided location.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									{
+										Name:   "Location",
+										Type:   "url",
+										Format: "<item location>",
+									},
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Name:       "Invalid Name",
+								StatusCode: http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+								},
+							},
+							{
+								Name:        "Not allowed",
+								Description: "Blob upload is not allowed because the registry is configured as a pull-through cache or for some other reason",
+								StatusCode:  http.StatusMethodNotAllowed,
+								ErrorCodes: []errcode.ErrorCode{
+									errcode.ErrorCodeUnsupported,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		Name:        RouteNameTagItemList,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/item/{tag:" + reference.TagRegexp.String() + "}/list",
+		Entity:      "itemNameList",
+		Description: "Get tag item list.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Fetch the customized file name list identified by `name` ",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							referenceParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The manifest identified by `name` and `tag`. The contents can be used to identify and resolve resources required to run the specified image.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									digestHeader,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      itemNameListBody,
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Description: "The name was invalid.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		Name:        RouteNameTagItem,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/item/{tag:" + reference.TagRegexp.String() + "}/{itemname:" + reference.TagRegexp.String() + "}",
+		Entity:      "itemBody",
+		Description: "Get image iten name list.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Fetch the image item name list identified by `name` ",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							referenceParameterDescriptor,
+							itemParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The manifest identified by `name` and `tag`. The contents can be used to identify and resolve resources required to run the specified image.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									digestHeader,
+								},
+								Body: BodyDescriptor{
+									ContentType: "ContentType: application/octect-stream",
+									Format:      "<binary data>",
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Description: "The name was invalid.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+			{
+				Method:      "POST",
+				Description: "To post the user update item file.",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							itemParameterDescriptor,
+						},
+						Body: BodyDescriptor{
+							ContentType: "application/octect-stream",
+							Format:      "<binary data>",
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The blob has been created in the registry and is available at the provided location.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									{
+										Name:   "Location",
+										Type:   "url",
+										Format: "<item location>",
+									},
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Name:       "Invalid Name",
+								StatusCode: http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+								},
+							},
+							{
+								Name:        "Not allowed",
+								Description: "Blob upload is not allowed because the registry is configured as a pull-through cache or for some other reason",
+								StatusCode:  http.StatusMethodNotAllowed,
+								ErrorCodes: []errcode.ErrorCode{
+									errcode.ErrorCodeUnsupported,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+		},
+	},
+	{
 		Name:        RouteNameManifest,
 		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/manifests/{reference:" + reference.TagRegexp.String() + "|" + digest.DigestRegexp.String() + "}",
 		Entity:      "Manifest",
@@ -688,7 +1084,6 @@ var routeDescriptors = []RouteDescriptor{
 			},
 		},
 	},
-
 	{
 		Name:        RouteNameBlob,
 		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/blobs/{digest:" + digest.DigestRegexp.String() + "}",

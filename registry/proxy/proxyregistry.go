@@ -174,6 +174,10 @@ func (pr *proxyingRegistry) BlobStatter() distribution.BlobStatter {
 	return pr.embedded.BlobStatter()
 }
 
+func (pr *proxyingRegistry) BlobCache() distribution.BlobCache {
+	return pr.embedded.BlobCache()
+}
+
 // authChallenger encapsulates a request to the upstream to establish credential challenges
 type authChallenger interface {
 	tryEstablishChallenges(context.Context) error
@@ -229,6 +233,7 @@ type proxiedRepository struct {
 	manifests distribution.ManifestService
 	name      reference.Named
 	tags      distribution.TagService
+	caches    distribution.CacheService
 }
 
 func (pr *proxiedRepository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {
@@ -245,4 +250,8 @@ func (pr *proxiedRepository) Named() reference.Named {
 
 func (pr *proxiedRepository) Tags(ctx context.Context) distribution.TagService {
 	return pr.tags
+}
+
+func (pr *proxiedRepository) Caches(ctx context.Context) distribution.CacheService {
+	return pr.caches
 }

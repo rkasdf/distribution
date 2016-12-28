@@ -35,3 +35,6 @@ bin/*
 # Editor/IDE specific files.
 *.sublime-project
 *.sublime-workspace
+.vscode
+.idea
+*.iml

@@ -104,6 +104,11 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	app.register(v2.RouteNameBlob, blobDispatcher)
 	app.register(v2.RouteNameBlobUpload, blobUploadDispatcher)
 	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher)
+	app.register(v2.RouteNameInfo, taginfoDispatcher)
+	app.register(v2.RouteNameImageItem, imageItemDispatcher)
+	app.register(v2.RouteNameImageItemList, imageItemListDispatcher)
+	app.register(v2.RouteNameTagItem, tagItemDispatcher)
+	app.register(v2.RouteNameTagItemList, tagItemListDispatcher)
 
 	// override the storage driver's UA string for registry outbound HTTP requests
 	storageParams := config.Storage.Parameters()

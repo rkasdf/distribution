@@ -25,6 +25,7 @@ const (
 //
 //		<root>/v2
 //			-> repositories/
+//				->catalog.json
 // 				-><name>/
 // 					-> _manifests/
 // 						revisions
@@ -84,6 +85,12 @@ const (
 // 	manifestTagIndexEntryPathSpec:         <root>/v2/repositories/<name>/_manifests/tags/<tag>/index/<algorithm>/<hex digest>/
 // 	manifestTagIndexEntryLinkPathSpec:     <root>/v2/repositories/<name>/_manifests/tags/<tag>/index/<algorithm>/<hex digest>/link
 //
+//	Items
+// 	imageItemSavePathSpec:                        <root>/v2/repositories/<name>/items/
+// 	imageItemInfoPathSpec:                        <root>/v2/uploarepositories/<name>/info.json
+// 	tagItemSavePathSpec:                          <root>/v2/repositories/<name>/tags/<tag>/items
+// 	tagItemInfoPathSpec:                          <root>/v2/repositories/<name>/tags/<tag>/info.json
+//
 // 	Blobs:
 //
 // 	layerLinkPathSpec:            <root>/v2/repositories/<name>/_layers/<algorithm>/<hex digest>/link
@@ -121,6 +128,86 @@ func pathFor(spec pathSpec) (string, error) {
 	repoPrefix := append(rootPrefix, "repositories")
 
 	switch v := spec.(type) {
+
+	case itemSaveRootPathSpec:
+		return path.Join(append(repoPrefix, v.name, "_items")...), nil
+
+	case imageItemSavePathSpec:
+		root, err := pathFor(imageItemListPathSpec{
+			name: v.name,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, v.item), nil
+
+	case imageItemInfoPathSpec:
+		root, err := pathFor(itemSaveRootPathSpec{
+			name: v.name,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, "itemsinfo.json"), nil
+
+	case imageItemListPathSpec:
+		root, err := pathFor(itemSaveRootPathSpec{
+			name: v.name,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, "save"), nil
+
+	case tagItemSavePathSpec:
+		root, err := pathFor(tagItemListPathSpec{
+			name: v.name,
+			tag:  v.tag,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, v.item), nil
+
+	case tagItemInfoPathSpec:
+		root, err := pathFor(itemSaveRootPathSpec{
+			name: v.name,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, "tags", v.tag, "itemsinfo.json"), nil
+
+	case tagItemListPathSpec:
+		root, err := pathFor(itemSaveRootPathSpec{
+			name: v.name,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, "tags", v.tag, "save"), nil
+
+	case catalogCachePathSpec:
+		return path.Join(append(repoPrefix, "catalog.json")...), nil
+
+	case tagListCachePathSpec:
+		root, err := pathFor(manifestTagsPathSpec{
+			name: v.name,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, "taglist.json"), nil
+
+	case tagInfoCachePathSpec:
+		root, err := pathFor(manifestTagPathSpec{
+			name: v.name,
+			tag:  v.tag,
+		})
+		if err != nil {
+			return "", err
+		}
+		return path.Join(root, "info.json"), nil
 
 	case manifestRevisionsPathSpec:
 		return path.Join(append(repoPrefix, v.name, "_manifests", "revisions")...), nil
@@ -264,6 +351,66 @@ func pathFor(spec pathSpec) (string, error) {
 type pathSpec interface {
 	pathSpec()
 }
+
+type catalogCachePathSpec struct {
+}
+
+func (catalogCachePathSpec) pathSpec() {}
+
+type tagListCachePathSpec struct {
+	name string
+}
+
+func (tagListCachePathSpec) pathSpec() {}
+
+type tagInfoCachePathSpec struct {
+	name string
+	tag  string
+}
+
+func (tagInfoCachePathSpec) pathSpec() {}
+
+type imageItemSavePathSpec struct {
+	name, item string
+}
+
+func (imageItemSavePathSpec) pathSpec() {}
+
+type imageItemInfoPathSpec struct {
+	name string
+}
+
+func (imageItemInfoPathSpec) pathSpec() {}
+
+type imageItemListPathSpec struct {
+	name string
+}
+
+func (imageItemListPathSpec) pathSpec() {}
+
+type tagItemSavePathSpec struct {
+	name, tag, item string
+}
+
+func (tagItemSavePathSpec) pathSpec() {}
+
+type tagItemInfoPathSpec struct {
+	name, tag string
+}
+
+type tagItemListPathSpec struct {
+	name, tag string
+}
+
+func (tagItemListPathSpec) pathSpec() {}
+
+func (tagItemInfoPathSpec) pathSpec() {}
+
+type itemSaveRootPathSpec struct {
+	name string
+}
+
+func (itemSaveRootPathSpec) pathSpec() {}
 
 // manifestRevisionsPathSpec describes the directory path for
 // a manifest revision.
