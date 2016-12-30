@@ -14,6 +14,8 @@ type CacheService interface {
 
 	CreateTagListCache(ctx context.Context) error
 
+	DeleteTagFromTagListCache(ctx context.Context, tag string) error
+
 	GetCatalog(ctx context.Context) ([]string, error)
 
 	GetTagList(ctx context.Context) ([]string, error)
@@ -28,11 +30,19 @@ type CacheService interface {
 
 	SaveImageItem(ctx context.Context, w http.ResponseWriter, r *http.Request, item string) error
 
+	DeleteImageItem(ctx context.Context, item string) error
+
+	DeleteAllImageItems(ctx context.Context) error
+
 	GetImageItem(ctx context.Context, w http.ResponseWriter, r *http.Request, item string) error
 
 	SaveTagItem(ctx context.Context, w http.ResponseWriter, r *http.Request, tag, item string) error
 
 	GetTagItem(ctx context.Context, w http.ResponseWriter, r *http.Request, tag, item string) error
+
+	DeleteTagItem(ctx context.Context, tag, item string) error
+
+	DeleteAllTagItems(ctx context.Context, tag string) error
 
 	// Get(ctx context.Context, tag string) (Descriptor, error)
 

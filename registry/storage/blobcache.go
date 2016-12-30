@@ -227,6 +227,89 @@ func (bc *blobCache) ServeItem(ctx context.Context, w http.ResponseWriter, r *ht
 	return nil
 }
 
+func (bc *blobCache) DeleteImageItem(ctx context.Context, name, item string) error {
+	isp, err := pathFor(imageItemSavePathSpec{
+		name: name,
+		item: item,
+	})
+	if err != nil {
+		return err
+	}
+	err = bc.driver.Delete(ctx, isp)
+	if err != nil {
+		return err
+	}
+	listpath, err := pathFor(imageItemListPathSpec{
+		name: name,
+	})
+	if err != nil {
+		return err
+	}
+	savepath, err := pathFor(imageItemInfoPathSpec{
+		name: name,
+	})
+	if err != nil {
+		return err
+	}
+	iil, err := bc.GetImageItemList(ctx, name)
+	if err != nil {
+		return updateItemList(ctx, bc, listpath, savepath)
+	}
+	return removeItemFromItemList(ctx, bc, name, item, listpath, savepath, iil)
+}
+func (bc *blobCache) DeleteAllImageItems(ctx context.Context, name string) error {
+	path, err := pathFor(itemSaveRootPathSpec{
+		name: name,
+	})
+	if err != nil {
+		return err
+	}
+	return bc.driver.Delete(ctx, path)
+}
+func (bc *blobCache) DeleteTagItem(ctx context.Context, name, tag, item string) error {
+	sps, err := pathFor(tagItemSavePathSpec{
+		name: name,
+		tag:  tag,
+		item: item,
+	})
+	if err != nil {
+		return err
+	}
+	err = bc.driver.Delete(ctx, sps)
+	if err != nil {
+		return err
+	}
+	listpath, err := pathFor(tagItemListPathSpec{
+		name: name,
+		tag:  tag,
+	})
+	if err != nil {
+		return err
+	}
+	savepath, err := pathFor(tagItemInfoPathSpec{
+		name: name,
+		tag:  tag,
+	})
+	if err != nil {
+		return err
+	}
+	til, err := bc.GetTagItemList(ctx, name, tag)
+	if err != nil {
+		return updateItemList(ctx, bc, listpath, savepath)
+	}
+	return removeItemFromItemList(ctx, bc, name, item, listpath, savepath, til)
+}
+func (bc *blobCache) DeleteAllTagItems(ctx context.Context, name, tag string) error {
+	path, err := pathFor(tagItemListPathSpec{
+		name: name,
+		tag:  tag,
+	})
+	if err != nil {
+		return err
+	}
+	return bc.driver.Delete(ctx, path)
+}
+
 func updateItemList(ctx context.Context, bc *blobCache, listpath, savepath string) error {
 	iil, err := bc.driver.List(ctx, listpath)
 	if err != nil {
@@ -243,6 +326,27 @@ func updateItemList(ctx context.Context, bc *blobCache, listpath, savepath strin
 		return err
 	}
 	return bc.driver.PutContent(ctx, savepath, content)
+}
+
+func removeItemFromItemList(ctx context.Context, bc *blobCache, name, item, listpath, path string, nameList []string) error {
+	index := -1
+	for i, itemname := range nameList {
+		if strings.EqualFold(item, itemname) {
+			index = i
+			break
+		}
+	}
+	if index > -1 {
+		nameList = append(nameList[:index], nameList[index+1:]...)
+		content, err := json.Marshal(itemNameList{
+			NameList: nameList,
+		})
+		if err != nil {
+			return err
+		}
+		return bc.driver.PutContent(ctx, path, content)
+	}
+	return nil
 }
 
 func addItemIntoItemList(ctx context.Context, bc *blobCache, name, item, listpath, path string, nameList []string) error {

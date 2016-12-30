@@ -410,11 +410,14 @@ func (imh *imageManifestHandler) DeleteImageManifest(w http.ResponseWriter, r *h
 		return
 	}
 
+	cacheservice := imh.Repository.Caches(imh)
 	for _, tag := range referencedTags {
 		if err := tagService.Untag(imh, tag); err != nil {
 			imh.Errors = append(imh.Errors, err)
 			return
 		}
+		cacheservice.DeleteTagFromTagListCache(imh, tag)
+		cacheservice.DeleteAllTagItems(imh, tag)
 	}
 
 	w.WriteHeader(http.StatusAccepted)

@@ -246,6 +246,10 @@ type BlobCache interface {
 	SaveImageItem(ctx context.Context, w http.ResponseWriter, r *http.Request, name, item string) error
 	SaveTagItem(ctx context.Context, w http.ResponseWriter, r *http.Request, name, tag, item string) error
 	ServeItem(ctx context.Context, w http.ResponseWriter, r *http.Request, path, item string) error
+	DeleteImageItem(ctx context.Context, name, item string) error
+	DeleteAllImageItems(ctx context.Context, name string) error
+	DeleteTagItem(ctx context.Context, name, tag, item string) error
+	DeleteAllTagItems(ctx context.Context, name, tag string) error
 }
 
 // BlobService combines the operations to access, read and write blobs. This

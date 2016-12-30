@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 
+	"strings"
+
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 )
@@ -64,8 +66,41 @@ func (cs *cacheStore) CreateTagListCache(ctx context.Context) error {
 		Name: name,
 		Tags: tags,
 	})
+	if err != nil {
+		return err
+	}
 	return cs.blobCache.CacheTagList(ctx, content, name)
 
+}
+
+func (cs *cacheStore) DeleteTagFromTagListCache(ctx context.Context, tag string) error {
+	tags, err := cs.GetTagList(ctx)
+	if err != nil {
+		return cs.CreateTagListCache(ctx)
+	}
+	index := -1
+	for i, tagname := range tags {
+		if strings.EqualFold(tag, tagname) {
+			index = i
+			break
+		}
+	}
+	if index > -1 {
+		tags = append(tags[:index], tags[index+1:]...)
+		name := cs.repository.Named().Name()
+		if err != nil {
+			return err
+		}
+		content, err := json.Marshal(tagList{
+			Name: name,
+			Tags: tags,
+		})
+		if err != nil {
+			return err
+		}
+		return cs.blobCache.CacheTagList(ctx, content, name)
+	}
+	return nil
 }
 
 func (cs *cacheStore) GetCatalog(ctx context.Context) ([]string, error) {
@@ -120,6 +155,16 @@ func (cs *cacheStore) SaveImageItem(ctx context.Context, w http.ResponseWriter, 
 	return cs.blobCache.SaveImageItem(ctx, w, r, name, item)
 }
 
+func (cs *cacheStore) DeleteImageItem(ctx context.Context, item string) error {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.DeleteImageItem(ctx, name, item)
+}
+
+func (cs *cacheStore) DeleteAllImageItems(ctx context.Context) error {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.DeleteAllImageItems(ctx, name)
+}
+
 func (cs *cacheStore) GetImageItem(ctx context.Context, w http.ResponseWriter, r *http.Request, item string) error {
 	name := cs.repository.Named().Name()
 	isp, err := pathFor(imageItemSavePathSpec{
@@ -149,4 +194,15 @@ func (cs *cacheStore) GetTagItem(ctx context.Context, w http.ResponseWriter, r *
 		return err
 	}
 	return cs.blobCache.ServeItem(ctx, w, r, sps, item)
+}
+
+func (cs *cacheStore) DeleteTagItem(ctx context.Context, tag, item string) error {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.DeleteTagItem(ctx, name, tag, item)
+
+}
+
+func (cs *cacheStore) DeleteAllTagItems(ctx context.Context, tag string) error {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.DeleteAllTagItems(ctx, name, tag)
 }

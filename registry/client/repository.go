@@ -219,6 +219,10 @@ func (c *caches) CreateTagListCache(ctx context.Context) error {
 	return nil
 }
 
+func (c *caches) DeleteTagFromTagListCache(ctx context.Context, tag string) error {
+	return nil
+}
+
 func (c *caches) GetCatalog(ctx context.Context) ([]string, error) {
 	return nil, nil
 }
@@ -256,6 +260,22 @@ func (c *caches) SaveTagItem(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (c *caches) GetTagItem(ctx context.Context, w http.ResponseWriter, r *http.Request, tag, item string) error {
+	return nil
+}
+
+func (c *caches) DeleteImageItem(ctx context.Context, item string) error {
+	return nil
+}
+
+func (c *caches) DeleteAllImageItems(ctx context.Context) error {
+	return nil
+}
+
+func (c *caches) DeleteTagItem(ctx context.Context, tag, item string) error {
+	return nil
+}
+
+func (c *caches) DeleteAllTagItems(ctx context.Context, tag string) error {
 	return nil
 }
 

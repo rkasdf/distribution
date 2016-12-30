@@ -14,8 +14,9 @@ func imageItemDispatcher(ctx *Context, r *http.Request) http.Handler {
 	}
 
 	return handlers.MethodHandler{
-		"GET":  http.HandlerFunc(imageItemHandler.GetImageItem),
-		"POST": http.HandlerFunc(imageItemHandler.SaveImageItem),
+		"GET":    http.HandlerFunc(imageItemHandler.GetImageItem),
+		"POST":   http.HandlerFunc(imageItemHandler.SaveImageItem),
+		"DELETE": http.HandlerFunc(imageItemHandler.DeleteImageItem),
 	}
 }
 
@@ -45,8 +46,9 @@ func tagItemDispatcher(ctx *Context, r *http.Request) http.Handler {
 	}
 
 	return handlers.MethodHandler{
-		"GET":  http.HandlerFunc(tagItemHandler.GetTagItem),
-		"POST": http.HandlerFunc(tagItemHandler.SaveTagItem),
+		"GET":    http.HandlerFunc(tagItemHandler.GetTagItem),
+		"POST":   http.HandlerFunc(tagItemHandler.SaveTagItem),
+		"DELETE": http.HandlerFunc(tagItemHandler.DeleteTagItem),
 	}
 }
 
@@ -138,4 +140,27 @@ func (ih *itemHandler) SaveTagItem(w http.ResponseWriter, r *http.Request) {
 		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		return
 	}
+}
+
+func (ih *itemHandler) DeleteImageItem(w http.ResponseWriter, r *http.Request) {
+	item := getItem(ih)
+	cacheservice := ih.Repository.Caches(ih)
+	err := cacheservice.DeleteImageItem(ih, item)
+	if err != nil {
+		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (ih *itemHandler) DeleteTagItem(w http.ResponseWriter, r *http.Request) {
+	item := getItem(ih)
+	tag := getTag(ih)
+	cacheservice := ih.Repository.Caches(ih)
+	err := cacheservice.DeleteTagItem(ih, tag, item)
+	if err != nil {
+		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
 }

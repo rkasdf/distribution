@@ -3,6 +3,8 @@ package storage
 import (
 	"path"
 
+	"strings"
+
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
@@ -44,6 +46,9 @@ func (ts *tagStore) All(ctx context.Context) ([]string, error) {
 
 	for _, entry := range entries {
 		_, filename := path.Split(entry)
+		if strings.EqualFold(filename, "taglist.json") {
+			continue
+		}
 		tags = append(tags, filename)
 	}
 

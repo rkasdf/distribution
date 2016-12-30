@@ -721,6 +721,66 @@ var routeDescriptors = []RouteDescriptor{
 					},
 				},
 			},
+			{
+				Method:      "DELETE",
+				Description: "Delete user update item file by `name`.",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							itemParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								StatusCode: http.StatusAccepted,
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Name:        "Invalid Name or Item",
+								Description: "The specified `name` or `item` were invalid and the delete was unable to proceed.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+									ErrorCodeTagInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+							{
+								Name:        "Unknown Item",
+								Description: "The specified `name` or `item` are unknown to the registry and the delete was unable to proceed. Clients can assume the manifest was already deleted if this response is returned.",
+								StatusCode:  http.StatusNotFound,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameUnknown,
+									ErrorCodeManifestUnknown,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							{
+								Name:        "Not allowed",
+								Description: "Item delete is not allowed because the registry is configured as a pull-through cache or `delete` has been disabled.",
+								StatusCode:  http.StatusMethodNotAllowed,
+								ErrorCodes: []errcode.ErrorCode{
+									errcode.ErrorCodeUnsupported,
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	},
 	{
@@ -839,6 +899,7 @@ var routeDescriptors = []RouteDescriptor{
 						},
 						PathParameters: []ParameterDescriptor{
 							nameParameterDescriptor,
+							referenceParameterDescriptor,
 							itemParameterDescriptor,
 						},
 						Body: BodyDescriptor{
@@ -877,6 +938,67 @@ var routeDescriptors = []RouteDescriptor{
 							unauthorizedResponseDescriptor,
 							repositoryNotFoundResponseDescriptor,
 							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+			{
+				Method:      "DELETE",
+				Description: "Delete user update item file by `name` and `tag`.",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							referenceParameterDescriptor,
+							itemParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								StatusCode: http.StatusAccepted,
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Name:        "Invalid Name or Item",
+								Description: "The specified `name` or `tag` or `item` were invalid and the delete was unable to proceed.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+									ErrorCodeTagInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+							{
+								Name: "Unknown Item",
+								Description: "The specified `name` or `tag	` or `item` are unknown to the registry and the delete was unable to proceed. Clients can assume the manifest was already deleted if this response is returned.",
+								StatusCode: http.StatusNotFound,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameUnknown,
+									ErrorCodeManifestUnknown,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							{
+								Name:        "Not allowed",
+								Description: "Item delete is not allowed because the registry is configured as a pull-through cache or `delete` has been disabled.",
+								StatusCode:  http.StatusMethodNotAllowed,
+								ErrorCodes: []errcode.ErrorCode{
+									errcode.ErrorCodeUnsupported,
+								},
+							},
 						},
 					},
 				},
