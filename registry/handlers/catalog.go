@@ -52,17 +52,7 @@ func (ch *catalogHandler) GetCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 	cacheservice := ch.App.registry.BlobCache()
 	content, err := cacheservice.GetCatalog(ch)
-	if err != nil {
-		ch.Errors = append(ch.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-		return
-	}
-	var c catalog
-	err = json.Unmarshal(content, &c)
-	if err != nil {
-		ch.Errors = append(ch.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-		return
-	}
-	cacherepos := c.Repositories
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err != nil || maxEntries > cachedMaxEntries {
 		repos := make([]string, maxEntries)
@@ -95,6 +85,13 @@ func (ch *catalogHandler) GetCatalog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
+		var c catalog
+		err = json.Unmarshal(content, &c)
+		if err != nil {
+			ch.Errors = append(ch.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+			return
+		}
+		cacherepos := c.Repositories
 		var start, end int
 		if len(cacherepos) < maxEntries {
 			maxEntries = len(cacherepos)

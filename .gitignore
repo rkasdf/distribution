@@ -7,6 +7,11 @@
 _obj
 _test
 
+# debug
+cmd/registry/debug
+cmd/registry/config-test.yml
+
+
 # Architecture specific extensions/prefixes
 *.[568vq]
 [568vq].out
