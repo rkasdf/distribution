@@ -1,0 +1,26 @@
+version: 0.1
+log:
+  fields:
+    service: registry
+storage:
+  cache:
+    blobdescriptor: inmemory
+  filesystem:
+    rootdirectory: /Users/inferno/registry
+  delete:
+    enabled: true
+http:
+  addr: 0.0.0.0:5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+  debug:
+    addr: 0.0.0.0:5001
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3
+log:
+  level: debug
+#proxy:
+#  remoteurl: https://registry-1.docker.io
