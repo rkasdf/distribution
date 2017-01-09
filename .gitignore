@@ -9,7 +9,7 @@ _test
 
 # debug
 cmd/registry/debug
-cmd/registry/config-test.yml
+#cmd/registry/config-test.yml
 
 
 # Architecture specific extensions/prefixes

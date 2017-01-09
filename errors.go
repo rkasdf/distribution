@@ -39,6 +39,14 @@ func (err ErrRepositoryUnknown) Error() string {
 	return fmt.Sprintf("unknown repository name=%s", err.Name)
 }
 
+type ErrItemRepositoryUnknown struct {
+	Name string
+}
+
+func (err ErrItemRepositoryUnknown) Error() string {
+	return fmt.Sprintf("unknown item repository name=%s", err.Name)
+}
+
 // ErrRepositoryNameInvalid should be used to denote an invalid repository
 // name. Reason may set, indicating the cause of invalidity.
 type ErrRepositoryNameInvalid struct {

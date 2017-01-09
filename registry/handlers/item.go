@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/docker/distribution"
 	"github.com/docker/distribution/registry/api/errcode"
+	"github.com/docker/distribution/registry/api/v2"
 	"github.com/gorilla/handlers"
 )
 
@@ -65,15 +67,26 @@ func (ih *itemHandler) GetImageItemNameList(w http.ResponseWriter, r *http.Reque
 	cacheservice := ih.Repository.Caches(ih)
 	names, err := cacheservice.GetImageItemList(ih)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err != nil {
+		switch err := err.(type) {
+		case distribution.ErrItemRepositoryUnknown:
+			ih.Errors = append(ih.Errors, v2.ErrorCodeNameUnknown.WithDetail(map[string]string{"name": ih.Repository.Named().Name()}))
+		case errcode.Error:
+			ih.Errors = append(ih.Errors, v2.ErrorCodeItemUnknown.WithDetail(err))
+		default:
+			ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		}
+		return
+	}
 
 	// Add a link header if there are more entries to retrieve
 	enc := json.NewEncoder(w)
 	if err != nil {
-		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		ih.Errors = append(ih.Errors, v2.ErrorCodeItemUnknown.WithDetail(err))
 		return
 	}
 	if err := enc.Encode(&names); err != nil {
-		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		ih.Errors = append(ih.Errors, v2.ErrorCodeItemUnknown.WithDetail(err))
 		return
 	}
 
@@ -88,13 +101,11 @@ func (ih *itemHandler) GetTagItemNameList(w http.ResponseWriter, r *http.Request
 	// Add a link header if there are more entries to retrieve
 	enc := json.NewEncoder(w)
 	if err != nil {
-		if err := enc.Encode(&names); err != nil {
-			ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-			return
-		}
+		ih.Errors = append(ih.Errors, v2.ErrorCodeItemUnknown.WithDetail(err))
+		return
 	}
 	if err := enc.Encode(&names); err != nil {
-		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		ih.Errors = append(ih.Errors, v2.ErrorCodeItemUnknown.WithDetail(err))
 		return
 	}
 

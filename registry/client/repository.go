@@ -279,6 +279,10 @@ func (c *caches) DeleteAllTagItems(ctx context.Context, tag string) error {
 	return nil
 }
 
+func (c *caches) InitItem(ctx context.Context, tag string) error {
+	return nil
+}
+
 // tags implements remote tagging operations.
 type tags struct {
 	client  *http.Client

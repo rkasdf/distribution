@@ -367,6 +367,7 @@ func (imh *imageManifestHandler) PutImageManifest(w http.ResponseWriter, r *http
 	cacheservice := imh.Repository.Caches(imh)
 	cacheservice.CreateTagListCache(imh)
 	cacheservice.CreateCatalogCache(imh, 1)
+	cacheservice.InitItem(imh, imh.Tag)
 	name := getName(imh)
 	CreateAndSaveTagInfo(imh, name)
 	w.Header().Set("Location", location)

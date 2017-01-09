@@ -567,7 +567,7 @@ var routeDescriptors = []RouteDescriptor{
 	},
 	{
 		Name:        RouteNameImageItemList,
-		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/item/list",
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/items/list",
 		Entity:      "itemNameList",
 		Description: "Get item list.",
 		Methods: []MethodDescriptor{
@@ -785,7 +785,7 @@ var routeDescriptors = []RouteDescriptor{
 	},
 	{
 		Name:        RouteNameTagItemList,
-		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/item/{tag:" + reference.TagRegexp.String() + "}/list",
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/item/{tag:" + reference.TagRegexp.String() + "}/tagitems/list",
 		Entity:      "itemNameList",
 		Description: "Get tag item list.",
 		Methods: []MethodDescriptor{

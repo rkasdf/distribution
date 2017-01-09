@@ -44,6 +44,8 @@ type CacheService interface {
 
 	DeleteAllTagItems(ctx context.Context, tag string) error
 
+	InitItem(ctx context.Context, tag string) error
+
 	// Get(ctx context.Context, tag string) (Descriptor, error)
 
 	// // Tag associates the tag with the provided descriptor, updating the

@@ -52,6 +52,15 @@ var (
 		HTTPStatusCode: http.StatusBadRequest,
 	})
 
+	// ErrorCodeItemUnknown when the repository name is not known.
+	ErrorCodeItemUnknown = errcode.Register(errGroup, errcode.ErrorDescriptor{
+		Value:   "ITEM_UNKNOWN",
+		Message: "repository item name not known to registry or there is not any items in request item repository.",
+		Description: `This is returned if the item used during an operation is
+		unknown to the registry.`,
+		HTTPStatusCode: http.StatusNotFound,
+	})
+
 	// ErrorCodeNameUnknown when the repository name is not known.
 	ErrorCodeNameUnknown = errcode.Register(errGroup, errcode.ErrorDescriptor{
 		Value:   "NAME_UNKNOWN",

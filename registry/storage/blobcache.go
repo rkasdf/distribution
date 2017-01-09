@@ -94,7 +94,26 @@ func (bc *blobCache) GetImageItemList(ctx context.Context, name string) ([]strin
 	}
 	content, err := bc.driver.GetContent(ctx, ilp)
 	if err != nil {
-		return nil, err
+		listpath, err := pathFor(imageItemListPathSpec{
+			name: name,
+		})
+		if err != nil {
+			return nil, err
+		}
+		savepath, err := pathFor(imageItemInfoPathSpec{
+			name: name,
+		})
+		if err != nil {
+			return nil, err
+		}
+		err = updateItemList(ctx, bc, listpath, savepath)
+		if err != nil {
+			return nil, err
+		}
+		content, err = bc.driver.GetContent(ctx, ilp)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var inl itemNameList
 	err = json.Unmarshal(content, &inl)
@@ -114,7 +133,28 @@ func (bc *blobCache) GetTagItemList(ctx context.Context, name, tag string) ([]st
 	}
 	content, err := bc.driver.GetContent(ctx, ilp)
 	if err != nil {
-		return nil, err
+		listpath, err := pathFor(tagItemListPathSpec{
+			name: name,
+			tag:  tag,
+		})
+		if err != nil {
+			return nil, err
+		}
+		savepath, err := pathFor(tagItemInfoPathSpec{
+			name: name,
+			tag:  tag,
+		})
+		if err != nil {
+			return nil, err
+		}
+		err = updateItemList(ctx, bc, listpath, savepath)
+		if err != nil {
+			return nil, err
+		}
+		content, err = bc.driver.GetContent(ctx, ilp)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var inl itemNameList
 	err = json.Unmarshal(content, &inl)
@@ -310,8 +350,54 @@ func (bc *blobCache) DeleteAllTagItems(ctx context.Context, name, tag string) er
 	return bc.driver.Delete(ctx, path)
 }
 
+func (bc *blobCache) InitItem(ctx context.Context, name, tag string) error {
+	isp, err := pathFor(imageItemInfoPathSpec{
+		name: name,
+	})
+	if err != nil {
+		return err
+	}
+	tsp, err := pathFor(tagItemInfoPathSpec{
+		name: name,
+		tag:  tag,
+	})
+	if err != nil {
+		return err
+	}
+	if err = initItemInfo(ctx, bc, isp); err != nil {
+		return err
+	}
+	if err = initItemInfo(ctx, bc, tsp); err != nil {
+		return err
+	}
+	return nil
+}
+
+func initItemInfo(ctx context.Context, bc *blobCache, path string) error {
+	_, err := bc.driver.GetContent(ctx, path)
+	if err != nil {
+		names := make([]string, 0)
+		content, err := json.Marshal(itemNameList{
+			NameList: names,
+		})
+		if err != nil {
+			return err
+		}
+		return bc.driver.PutContent(ctx, path, content)
+	}
+	return nil
+}
+
 func updateItemList(ctx context.Context, bc *blobCache, listpath, savepath string) error {
 	iil, err := bc.driver.List(ctx, listpath)
+	if err != nil {
+		switch err := err.(type) {
+		case driver.PathNotFoundError:
+			return distribution.ErrItemRepositoryUnknown{Name: listpath}
+		default:
+			return err
+		}
+	}
 	if err != nil {
 		return err
 	}

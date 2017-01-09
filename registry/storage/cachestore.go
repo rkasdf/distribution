@@ -206,3 +206,8 @@ func (cs *cacheStore) DeleteAllTagItems(ctx context.Context, tag string) error {
 	name := cs.repository.Named().Name()
 	return cs.blobCache.DeleteAllTagItems(ctx, name, tag)
 }
+
+func (cs *cacheStore) InitItem(ctx context.Context, tag string) error {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.InitItem(ctx, name, tag)
+}

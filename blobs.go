@@ -240,6 +240,7 @@ type BlobCache interface {
 	GetTagList(ctx context.Context, name string) ([]byte, error)
 	SaveTagInfo(ctx context.Context, content []byte, name, tag string) error
 	GetTagInfo(ctx context.Context, name, tag string) ([]byte, error)
+	InitItem(ctx context.Context, name, tag string) error
 
 	GetImageItemList(ctx context.Context, name string) ([]string, error)
 	GetTagItemList(ctx context.Context, name, tag string) ([]string, error)
