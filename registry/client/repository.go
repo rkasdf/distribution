@@ -281,6 +281,14 @@ func (c *caches) DeleteAllTagItems(ctx context.Context, tag string) error {
 
 func (c *caches) InitItem(ctx context.Context, tag string) error {
 	return nil
+
+}
+func (c *caches) SaveImageInfo(ctx context.Context, content []byte) error {
+	return nil
+}
+
+func (c *caches) GetImageInfo(ctx context.Context) ([]byte, error) {
+	return nil, nil
 }
 
 // tags implements remote tagging operations.

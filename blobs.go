@@ -238,7 +238,9 @@ type BlobCache interface {
 	CacheTagList(ctx context.Context, content []byte, name string) error
 	// GetTagList will get the taglist which store in the storage.
 	GetTagList(ctx context.Context, name string) ([]byte, error)
+	SaveImageInfo(ctx context.Context, content []byte, name string) error
 	SaveTagInfo(ctx context.Context, content []byte, name, tag string) error
+	GetImageInfo(ctx context.Context, name string) ([]byte, error)
 	GetTagInfo(ctx context.Context, name, tag string) ([]byte, error)
 	InitItem(ctx context.Context, name, tag string) error
 

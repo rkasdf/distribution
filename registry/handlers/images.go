@@ -370,6 +370,7 @@ func (imh *imageManifestHandler) PutImageManifest(w http.ResponseWriter, r *http
 	cacheservice.InitItem(imh, imh.Tag)
 	name := getName(imh)
 	CreateAndSaveTagInfo(imh, name)
+	CreateAndSaveImageInfo(imh.Context, name)
 	w.Header().Set("Location", location)
 	w.Header().Set("Docker-Content-Digest", imh.Digest.String())
 	w.WriteHeader(http.StatusCreated)

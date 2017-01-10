@@ -22,6 +22,10 @@ type CacheService interface {
 
 	SaveTagInfo(ctx context.Context, tag string, content []byte) error
 
+	SaveImageInfo(ctx context.Context, content []byte) error
+
+	GetImageInfo(ctx context.Context) ([]byte, error)
+
 	GetTagInfo(ctx context.Context, tag string) ([]byte, error)
 
 	GetImageItemList(ctx context.Context) ([]string, error)

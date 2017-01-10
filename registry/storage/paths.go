@@ -199,6 +199,9 @@ func pathFor(spec pathSpec) (string, error) {
 		}
 		return path.Join(root, "taglist.json"), nil
 
+	case imageInfoCachePathSpec:
+		return path.Join(append(repoPrefix, v.name, "_manifests", "info.json")...), nil
+
 	case tagInfoCachePathSpec:
 		root, err := pathFor(manifestTagPathSpec{
 			name: v.name,
@@ -362,6 +365,12 @@ type tagListCachePathSpec struct {
 }
 
 func (tagListCachePathSpec) pathSpec() {}
+
+type imageInfoCachePathSpec struct {
+	name string
+}
+
+func (imageInfoCachePathSpec) pathSpec() {}
 
 type tagInfoCachePathSpec struct {
 	name string

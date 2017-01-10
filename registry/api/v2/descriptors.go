@@ -199,6 +199,15 @@ const (
    "history": <v1 images>,
    "signature": <JWS>
 }`
+	imageinfoBody = `{
+   "name": <name>,
+   "tags": [
+      <taginfoBody>,
+      ...
+   ],
+   "lastModified": <lastModified>,
+   "size": <size>
+}`
 	taginfoBody = `{
    "name": <name>,
    "tag": <tag>,
@@ -512,7 +521,7 @@ var routeDescriptors = []RouteDescriptor{
 		},
 	},
 	{
-		Name:        RouteNameInfo,
+		Name:        RouteNameTagInfo,
 		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/taginfo/{tag:" + reference.TagRegexp.String() + "}",
 		Entity:      "TagInfo",
 		Description: "Get tag info.",
@@ -539,7 +548,60 @@ var routeDescriptors = []RouteDescriptor{
 								},
 								Body: BodyDescriptor{
 									ContentType: "<media type of tagInfo>",
-									Format:      manifestBody,
+									Format:      taginfoBody,
+								},
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Description: "The name or reference was invalid.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+									ErrorCodeTagInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		Name:        RouteNameImageInfo,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/imageinfo",
+		Entity:      "ImageInfo",
+		Description: "Get image info.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Fetch the tag info identified by `name` . A `HEAD` request can also be issued to this endpoint to obtain resource information without receiving all data.",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								Description: "The manifest identified by `name` and `tag`. The contents can be used to identify and resolve resources required to run the specified image.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									digestHeader,
+								},
+								Body: BodyDescriptor{
+									ContentType: "<media type of imageInfo>",
+									Format:      imageinfoBody,
 								},
 							},
 						},

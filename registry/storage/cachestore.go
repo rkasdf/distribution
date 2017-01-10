@@ -135,6 +135,16 @@ func (cs *cacheStore) SaveTagInfo(ctx context.Context, tag string, content []byt
 	return cs.blobCache.SaveTagInfo(ctx, content, name, tag)
 }
 
+func (cs *cacheStore) SaveImageInfo(ctx context.Context, content []byte) error {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.SaveImageInfo(ctx, content, name)
+}
+
+func (cs *cacheStore) GetImageInfo(ctx context.Context) ([]byte, error) {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.GetImageInfo(ctx, name)
+}
+
 func (cs *cacheStore) GetTagInfo(ctx context.Context, tag string) ([]byte, error) {
 	name := cs.repository.Named().Name()
 	return cs.blobCache.GetTagInfo(ctx, name, tag)

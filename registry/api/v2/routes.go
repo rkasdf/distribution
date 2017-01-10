@@ -12,7 +12,8 @@ const (
 	RouteNameBlobUpload      = "blob-upload"
 	RouteNameBlobUploadChunk = "blob-upload-chunk"
 	RouteNameCatalog         = "catalog"
-	RouteNameInfo            = "info"
+	RouteNameTagInfo         = "taginfo"
+	RouteNameImageInfo       = "imageinfo"
 	RouteNameImageItemList   = "imageitemlist"
 	RouteNameTagItemList     = "tagitemlist"
 	RouteNameTagItem         = "tagitem"
@@ -26,7 +27,8 @@ var allEndpoints = []string{
 	RouteNameBlob,
 	RouteNameBlobUpload,
 	RouteNameBlobUploadChunk,
-	RouteNameInfo,
+	RouteNameImageInfo,
+	RouteNameTagInfo,
 	RouteNameImageItemList,
 	RouteNameImageItem,
 }

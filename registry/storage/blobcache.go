@@ -74,6 +74,26 @@ func (bc *blobCache) SaveTagInfo(ctx context.Context, content []byte, name strin
 	return bc.driver.PutContent(ctx, tp, content)
 }
 
+func (bc *blobCache) SaveImageInfo(ctx context.Context, content []byte, name string) error {
+	ip, err := pathFor(imageInfoCachePathSpec{
+		name: name,
+	})
+	if err != nil {
+		return err
+	}
+	return bc.driver.PutContent(ctx, ip, content)
+}
+
+func (bc *blobCache) GetImageInfo(ctx context.Context, name string) ([]byte, error) {
+	ip, err := pathFor(imageInfoCachePathSpec{
+		name: name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return bc.driver.GetContent(ctx, ip)
+}
+
 func (bc *blobCache) GetTagInfo(ctx context.Context, name, tag string) ([]byte, error) {
 	tp, err := pathFor(tagInfoCachePathSpec{
 		name: name,
