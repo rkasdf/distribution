@@ -2,8 +2,10 @@ package handlers
 
 import (
 	cryptorand "crypto/rand"
+	"encoding/json"
 	"expvar"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -81,6 +83,9 @@ type App struct {
 
 	// readOnly is true if the registry is in a read-only maintenance mode
 	readOnly bool
+
+	// isEnhanced is true if this registry enabled with enhanced function
+	isEnhanced bool
 }
 
 // NewApp takes a configuration and returns a configured app, ready to serve
@@ -88,10 +93,11 @@ type App struct {
 // handlers accordingly.
 func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	app := &App{
-		Config:  config,
-		Context: ctx,
-		router:  v2.RouterWithPrefix(config.HTTP.Prefix),
-		isCache: config.Proxy.RemoteURL != "",
+		Config:     config,
+		Context:    ctx,
+		router:     v2.RouterWithPrefix(config.HTTP.Prefix),
+		isCache:    config.Proxy.RemoteURL != "",
+		isEnhanced: true,
 	}
 
 	// Register the handler dispatchers.
@@ -104,12 +110,15 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	app.register(v2.RouteNameBlob, blobDispatcher)
 	app.register(v2.RouteNameBlobUpload, blobUploadDispatcher)
 	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher)
-	app.register(v2.RouteNameTagInfo, taginfoDispatcher)
-	app.register(v2.RouteNameImageInfo, imageinfoDispatcher)
-	app.register(v2.RouteNameImageItem, imageItemDispatcher)
-	app.register(v2.RouteNameImageItemList, imageItemListDispatcher)
-	app.register(v2.RouteNameTagItem, tagItemDispatcher)
-	app.register(v2.RouteNameTagItemList, tagItemListDispatcher)
+	// Register the enhanced api
+	if app.isEnhanced {
+		app.register(v2.RouteNameTagInfo, taginfoDispatcher)
+		app.register(v2.RouteNameImageInfo, imageinfoDispatcher)
+		app.register(v2.RouteNameImageItem, imageItemDispatcher)
+		app.register(v2.RouteNameImageItemList, imageItemListDispatcher)
+		app.register(v2.RouteNameTagItem, tagItemDispatcher)
+		app.register(v2.RouteNameTagItemList, tagItemListDispatcher)
+	}
 
 	// override the storage driver's UA string for registry outbound HTTP requests
 	storageParams := config.Storage.Parameters()
@@ -286,6 +295,12 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		ctxu.GetLogger(app).Info("Registry configured as a proxy cache to ", config.Proxy.RemoteURL)
 	}
 
+	if app.isEnhanced {
+		err := app.updateCache()
+		if err != nil {
+			panic(err)
+		}
+	}
 	return app
 }
 
@@ -370,6 +385,57 @@ func (app *App) RegisterHealthChecks(healthRegistries ...*health.Registry) {
 			healthRegistry.Register(tcpChecker.Addr, health.PeriodicChecker(checker, interval))
 		}
 	}
+}
+
+func (app *App) updateCache() error {
+	repos := make([]string, cachedMaxEntries)
+
+	filled, err := app.registry.Repositories(app, repos, "")
+	if err != nil && err != io.EOF {
+		return err
+	}
+	blobCache := app.registry.BlobCache()
+	content, err := json.Marshal(catalog{
+		Repositories: repos[0:filled],
+	})
+	if err != nil {
+		return err
+	}
+	blobCache.CacheCatalog(app, content)
+
+	for i := 0; i < filled; i++ {
+
+		imagename := repos[i]
+		nameRef, err := reference.WithName(imagename)
+		repository, err := app.registry.Repository(app.Context, nameRef)
+		if err != nil {
+			return err
+		}
+		ctx := &Context{
+			App:        app,
+			Context:    app.Context,
+			Repository: repository,
+		}
+		if err != nil {
+			return err
+		}
+		tagserivce := repository.Tags(ctx)
+		cacheservice := repository.Caches(ctx)
+		tags, err := tagserivce.All(ctx)
+		if err != nil {
+			return err
+		}
+		for _, tag := range tags {
+			imh := &imageManifestHandler{
+				Context: ctx,
+				Tag:     tag,
+			}
+			createAndSaveTagInfo(imh, imagename)
+		}
+		createAndSaveImageInfo(ctx, imagename)
+		cacheservice.CreateTagListCache(ctx)
+	}
+	return nil
 }
 
 // register a handler with the application, by route name. The handler will be

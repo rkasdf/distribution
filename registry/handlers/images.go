@@ -179,6 +179,11 @@ func (imh *imageManifestHandler) GetImageManifest(w http.ResponseWriter, r *http
 		return
 	}
 
+	if imh.Tag != "" && imh.isEnhanced {
+		name := getName(imh)
+		updateDownloadCount(imh, name, imh.Tag)
+	}
+
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Content-Length", fmt.Sprint(len(p)))
 	w.Header().Set("Docker-Content-Digest", imh.Digest.String())
@@ -186,7 +191,7 @@ func (imh *imageManifestHandler) GetImageManifest(w http.ResponseWriter, r *http
 	w.Write(p)
 }
 
-func GetTagManifests(imh *imageManifestHandler) (*schema2.DeserializedManifest, error) {
+func getTagManifests(imh *imageManifestHandler) (*schema2.DeserializedManifest, error) {
 	manifests, err := imh.Repository.Manifests(imh)
 	if err != nil {
 		err = append(imh.Errors, err)
@@ -364,13 +369,18 @@ func (imh *imageManifestHandler) PutImageManifest(w http.ResponseWriter, r *http
 		ctxu.GetLogger(imh).Errorf("error building manifest url from digest: %v", err)
 	}
 
-	cacheservice := imh.Repository.Caches(imh)
-	cacheservice.CreateTagListCache(imh)
-	cacheservice.CreateCatalogCache(imh, 1)
-	cacheservice.InitItem(imh, imh.Tag)
-	name := getName(imh)
-	CreateAndSaveTagInfo(imh, name)
-	CreateAndSaveImageInfo(imh.Context, name)
+	// to add some info.
+	if imh.isEnhanced && imh.Tag != "" {
+		cacheservice := imh.Repository.Caches(imh)
+		cacheservice.CreateTagListCache(imh)
+		cacheservice.CreateCatalogCache(imh, 1)
+		cacheservice.InitItem(imh, imh.Tag)
+		name := getName(imh)
+		createAndSaveTagInfo(imh, name)
+		createAndSaveImageInfo(imh.Context, name)
+
+	}
+
 	w.Header().Set("Location", location)
 	w.Header().Set("Docker-Content-Digest", imh.Digest.String())
 	w.WriteHeader(http.StatusCreated)
@@ -412,14 +422,16 @@ func (imh *imageManifestHandler) DeleteImageManifest(w http.ResponseWriter, r *h
 		return
 	}
 
-	cacheservice := imh.Repository.Caches(imh)
-	for _, tag := range referencedTags {
-		if err := tagService.Untag(imh, tag); err != nil {
-			imh.Errors = append(imh.Errors, err)
-			return
+	if imh.Tag != "" && imh.isEnhanced {
+		cacheservice := imh.Repository.Caches(imh)
+		for _, tag := range referencedTags {
+			if err := tagService.Untag(imh, tag); err != nil {
+				imh.Errors = append(imh.Errors, err)
+				return
+			}
+			cacheservice.DeleteTagFromTagListCache(imh, tag)
+			cacheservice.DeleteAllTagItems(imh, tag)
 		}
-		cacheservice.DeleteTagFromTagListCache(imh, tag)
-		cacheservice.DeleteAllTagItems(imh, tag)
 	}
 
 	w.WriteHeader(http.StatusAccepted)

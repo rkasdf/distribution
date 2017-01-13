@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
+	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/gorilla/handlers"
 )
 
@@ -34,27 +35,30 @@ type tagsAPIResponse struct {
 // GetTags returns a json list of tags for a specific image name.
 func (th *tagsHandler) GetTags(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-
-	cacheService := th.Repository.Caches(th)
-	tags, err := cacheService.GetTagList(th)
-	if err != nil {
-		err = cacheService.CreateTagListCache(th)
-		if err != nil {
-			switch err := err.(type) {
-			case distribution.ErrRepositoryUnknown:
-				th.Errors = append(th.Errors, v2.ErrorCodeNameUnknown.WithDetail(map[string]string{"name": th.Repository.Named().Name()}))
-			case errcode.Error:
-				th.Errors = append(th.Errors, err)
-			default:
-				th.Errors = append(th.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-			}
-			return
-		}
+	var err error
+	var tags []string
+	if th.isEnhanced {
+		cacheService := th.Repository.Caches(th)
 		tags, err = cacheService.GetTagList(th)
-		if err != nil {
-			th.Errors = append(th.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-			return
+		_, pathNotFound := err.(driver.PathNotFoundError)
+		if pathNotFound {
+			err = cacheService.CreateTagListCache(th)
+			tags, err = cacheService.GetTagList(th)
 		}
+	} else {
+		ts := th.Repository.Tags(th)
+		tags, err = ts.All(th)
+	}
+	if err != nil {
+		switch err := err.(type) {
+		case distribution.ErrRepositoryUnknown:
+			th.Errors = append(th.Errors, v2.ErrorCodeNameUnknown.WithDetail(map[string]string{"name": th.Repository.Named().Name()}))
+		case errcode.Error:
+			th.Errors = append(th.Errors, err)
+		default:
+			th.Errors = append(th.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		}
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
