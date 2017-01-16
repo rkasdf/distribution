@@ -191,11 +191,11 @@ func (imh *imageManifestHandler) GetImageManifest(w http.ResponseWriter, r *http
 	w.Write(p)
 }
 
-func getTagManifests(imh *imageManifestHandler) (*schema2.DeserializedManifest, error) {
+func getTagManifests(imh *imageManifestHandler) (distribution.Manifest, distribution.Manifest, error) {
 	manifests, err := imh.Repository.Manifests(imh)
 	if err != nil {
 		err = append(imh.Errors, err)
-		return nil, err
+		return nil, nil, err
 	}
 	var manifest distribution.Manifest
 	if imh.Tag != "" {
@@ -203,7 +203,7 @@ func getTagManifests(imh *imageManifestHandler) (*schema2.DeserializedManifest, 
 		desc, err := tags.Get(imh, imh.Tag)
 		if err != nil {
 			err = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(err))
-			return nil, err
+			return nil, nil, err
 		}
 		imh.Digest = desc.Digest
 	}
@@ -214,10 +214,55 @@ func getTagManifests(imh *imageManifestHandler) (*schema2.DeserializedManifest, 
 	manifest, err = manifests.Get(imh, imh.Digest, options...)
 	if err != nil {
 		err = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(err))
-		return nil, err
+		return nil, nil, err
 	}
-	schema2Manifest, _ := manifest.(*schema2.DeserializedManifest)
-	return schema2Manifest, nil
+	schema2Manifest, isSchema2 := manifest.(*schema2.DeserializedManifest)
+	manifestList, isManifestList := manifest.(*manifestlist.DeserializedManifestList)
+
+	var convertedManifets distribution.Manifest
+	if imh.Tag != "" && isSchema2 {
+		// Rewrite manifest in schema1 format
+		ctxu.GetLogger(imh).Infof("rewriting manifest %s in schema1 format to support old client", imh.Digest.String())
+
+		convertedManifets, err = imh.convertSchema2Manifest(schema2Manifest)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else if imh.Tag != "" && isManifestList {
+		// Rewrite manifest in schema1 format
+		ctxu.GetLogger(imh).Infof("rewriting manifest list %s in schema1 format to support old client", imh.Digest.String())
+
+		// Find the image manifest corresponding to the default
+		// platform
+		var manifestDigest digest.Digest
+		for _, manifestDescriptor := range manifestList.Manifests {
+			if manifestDescriptor.Platform.Architecture == defaultArch && manifestDescriptor.Platform.OS == defaultOS {
+				manifestDigest = manifestDescriptor.Digest
+				break
+			}
+		}
+
+		if manifestDigest == "" {
+			imh.Errors = append(imh.Errors, v2.ErrorCodeManifestUnknown)
+			return nil, nil, err
+		}
+
+		convertedManifets, err = manifests.Get(imh, manifestDigest)
+		if err != nil {
+			imh.Errors = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(err))
+			return nil, nil, err
+		}
+
+		// If necessary, convert the image manifest
+		if schema2Manifest, isSchema2 := manifest.(*schema2.DeserializedManifest); isSchema2 {
+			convertedManifets, err = imh.convertSchema2Manifest(schema2Manifest)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+
+	return manifest, convertedManifets, nil
 }
 
 func (imh *imageManifestHandler) convertSchema2Manifest(schema2Manifest *schema2.DeserializedManifest) (distribution.Manifest, error) {

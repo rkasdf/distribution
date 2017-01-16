@@ -77,12 +77,12 @@ func (ih *infoHandler) GetImageInfo(w http.ResponseWriter, r *http.Request) {
 func updateDownloadCount(imh *imageManifestHandler, name, tag string) error {
 	cacheservice := imh.Repository.Caches(imh)
 	taginfocontent, err := cacheservice.GetTagInfo(imh, tag)
+	var taginfo taginfoAPIResponse
 	if err != nil {
-		if _, err := createAndSaveTagInfo(imh, name); err != nil {
+		if taginfo, err = createAndSaveTagInfo(imh, name); err != nil {
 			return err
 		}
 	} else {
-		var taginfo taginfoAPIResponse
 		if err = json.Unmarshal(taginfocontent, &taginfo); err != nil {
 			return err
 		}
@@ -113,6 +113,11 @@ func updateDownloadCount(imh *imageManifestHandler, name, tag string) error {
 			imageinfo.DownloadCount = 1
 		} else {
 			imageinfo.DownloadCount++
+		}
+		for index, tag := range imageinfo.Tags {
+			if tag.Tag == taginfo.Tag {
+				imageinfo.Tags[index] = taginfo
+			}
 		}
 		if imageinfocontent, err = json.Marshal(imageinfo); err != nil {
 			return err
@@ -200,20 +205,23 @@ func (ih *infoHandler) GetTaginfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func createAndSaveTagInfo(imh *imageManifestHandler, name string) (taginfoAPIResponse, error) {
-	schema2manifest, err := getTagManifests(imh)
+	schema2manifest, convertedManifest, err := getTagManifests(imh)
 	if err != nil {
 		return taginfoAPIResponse{}, err
 	}
-	manifest, err := imh.convertSchema2Manifest(schema2manifest)
-	if err != nil {
-		return taginfoAPIResponse{}, err
+	var scheme1manifest *schema1.SignedManifest
+	if convertedManifest != nil {
+		scheme1manifest, _ = convertedManifest.(*schema1.SignedManifest)
+	} else {
+		scheme1manifest, _ = schema2manifest.(*schema1.SignedManifest)
 	}
-	scheme1manifest, _ := manifest.(*schema1.SignedManifest)
+
 	type v1Compatibility struct {
 		ID              string    `json:"id"`
 		Parent          string    `json:"parent,omitempty"`
 		Comment         string    `json:"comment,omitempty"`
 		Created         time.Time `json:"created"`
+		Size            int64     `json:"size"`
 		ContainerConfig struct {
 			Cmd []string
 		} `json:"container_config,omitempty"`
@@ -228,9 +236,14 @@ func createAndSaveTagInfo(imh *imageManifestHandler, name string) (taginfoAPIRes
 			createTime = historyinfo.Created
 		}
 	}
+	blobs := imh.Repository.Blobs(imh)
 	var size int64
 	for _, d := range schema2manifest.References() {
-		size += d.Size
+		desc, err := blobs.Stat(imh, d.Digest)
+		if err != nil {
+			return taginfoAPIResponse{}, err
+		}
+		size += desc.Size
 	}
 	response := taginfoAPIResponse{
 		Name:          name,
