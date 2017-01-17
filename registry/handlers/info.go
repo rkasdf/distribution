@@ -3,12 +3,22 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/gorilla/handlers"
 )
+
+func cataloginfoDispatcher(ctx *Context, r *http.Request) http.Handler {
+	cataloginfoHandler := &infoHandler{
+		Context: ctx,
+	}
+	return handlers.MethodHandler{
+		"GET": http.HandlerFunc(cataloginfoHandler.GetCatalogInfo),
+	}
+}
 
 func imageinfoDispatcher(ctx *Context, r *http.Request) http.Handler {
 	imageinfoHandler := &infoHandler{
@@ -37,7 +47,7 @@ type taginfoAPIResponse struct {
 	Name          string    `json:"name"`
 	Tag           string    `json:"tag"`
 	CreateTime    time.Time `json:"createTime"`
-	DownloadCount int64     `json:"downloadCount"`
+	DownloadCount int       `json:"downloadCount"`
 	Size          int64     `json:"size"`
 }
 
@@ -45,10 +55,16 @@ type imageinfoAPIResponse struct {
 	Name          string               `json:"name"`
 	Tags          []taginfoAPIResponse `json:"tags"`
 	Size          int                  `json:"size"`
-	DownloadCount int64                `json:"downloadCount"`
+	DownloadCount int                  `json:"downloadCount"`
 	LastModified  time.Time            `json:"lastModified"`
 	CreateTime    time.Time            `json:"createTime"`
 }
+
+type cataloginfoAPIResponse struct {
+	ImageInfos []imageinfoAPIResponse `json:"imageInfos"`
+}
+
+var catalogLock sync.RWMutex
 
 func (ih *infoHandler) GetImageInfo(w http.ResponseWriter, r *http.Request) {
 	cacheservice := ih.Repository.Caches(ih)
@@ -98,34 +114,6 @@ func updateDownloadCount(imh *imageManifestHandler, name, tag string) error {
 			return err
 		}
 	}
-
-	var imageinfo imageinfoAPIResponse
-	imageinfocontent, err := cacheservice.GetImageInfo(imh)
-	if err != nil {
-		if _, err := createAndSaveImageInfo(imh.Context, name); err != nil {
-			return err
-		}
-	} else {
-		if err = json.Unmarshal(imageinfocontent, &imageinfo); err != nil {
-			return err
-		}
-		if imageinfo.DownloadCount < 1 {
-			imageinfo.DownloadCount = 1
-		} else {
-			imageinfo.DownloadCount++
-		}
-		for index, tag := range imageinfo.Tags {
-			if tag.Tag == taginfo.Tag {
-				imageinfo.Tags[index] = taginfo
-			}
-		}
-		if imageinfocontent, err = json.Marshal(imageinfo); err != nil {
-			return err
-		}
-		if err = cacheservice.SaveImageInfo(imh.Context, imageinfocontent); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -140,8 +128,7 @@ func createAndSaveImageInfo(ctx *Context, name string) (imageinfoAPIResponse, er
 	}
 	tags := make([]taginfoAPIResponse, len(taglist))
 	var lastModified time.Time
-	var downloadCount int64
-	downloadCount = 0
+	downloadCount := 0
 	for i, tagname := range taglist {
 		content, err := cacheservice.GetTagInfo(ctx, tagname)
 		if err != nil {
@@ -177,6 +164,26 @@ func createAndSaveImageInfo(ctx *Context, name string) (imageinfoAPIResponse, er
 	cacheservice.SaveImageInfo(ctx, jsonContent)
 
 	return imageinfo, nil
+}
+
+func (ih *infoHandler) GetCatalogInfo(w http.ResponseWriter, r *http.Request) {
+	blobCache := ih.registry.BlobCache()
+	content, err := blobCache.GetCatalogInfo(ih)
+	if err != nil {
+		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
+	enc := json.NewEncoder(w)
+	var response cataloginfoAPIResponse
+	err = json.Unmarshal(content, &response)
+	if err != nil {
+		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
+	if err := enc.Encode(&response); err != nil {
+		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
 }
 
 func (ih *infoHandler) GetTaginfo(w http.ResponseWriter, r *http.Request) {
@@ -252,7 +259,6 @@ func createAndSaveTagInfo(imh *imageManifestHandler, name string) (taginfoAPIRes
 		CreateTime:    createTime,
 		Size:          size,
 	}
-	jsonContent, err := json.Marshal(response)
 	cacheservice := imh.Repository.Caches(imh)
 	infocontent, err := cacheservice.GetTagInfo(imh, imh.Tag)
 	if err == nil {
@@ -261,7 +267,32 @@ func createAndSaveTagInfo(imh *imageManifestHandler, name string) (taginfoAPIRes
 			response.DownloadCount = existinfo.DownloadCount
 		}
 	}
+	jsonContent, err := json.Marshal(response)
 	cacheservice.SaveTagInfo(imh, imh.Tag, jsonContent)
 	return response, nil
 
+}
+
+func updateCatalogInfo(ctx *Context, imageInfo imageinfoAPIResponse) error {
+	catalogLock.Lock()
+	defer catalogLock.Unlock()
+	cacheService := ctx.Repository.Caches(ctx)
+	content, err := cacheService.GetCatalogInfo(ctx)
+	if err != nil {
+		return err
+	}
+	var cataloginfo cataloginfoAPIResponse
+	if err = json.Unmarshal(content, &cataloginfo); err != nil {
+		return err
+	}
+	for i, image := range cataloginfo.ImageInfos {
+		if image.Name == imageInfo.Name {
+			cataloginfo.ImageInfos[i] = imageInfo
+			break
+		}
+	}
+	if content, err = json.Marshal(cataloginfo); err != nil {
+		return err
+	}
+	return cacheService.SaveCatalogInfo(ctx, content)
 }

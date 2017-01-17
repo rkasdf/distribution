@@ -112,6 +112,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher)
 	// Register the enhanced api
 	if app.isEnhanced {
+		app.register(v2.RouteNameCatalogInfo, cataloginfoDispatcher)
 		app.register(v2.RouteNameTagInfo, taginfoDispatcher)
 		app.register(v2.RouteNameImageInfo, imageinfoDispatcher)
 		app.register(v2.RouteNameImageItem, imageItemDispatcher)
@@ -403,8 +404,9 @@ func (app *App) updateCache() error {
 	}
 	blobCache.CacheCatalog(app, content)
 
-	for i := 0; i < filled; i++ {
+	imageinfos := make([]imageinfoAPIResponse, filled)
 
+	for i := 0; i < filled; i++ {
 		imagename := repos[i]
 		nameRef, err := reference.WithName(imagename)
 		repository, err := app.registry.Repository(app.Context, nameRef)
@@ -432,9 +434,17 @@ func (app *App) updateCache() error {
 			}
 			createAndSaveTagInfo(imh, imagename)
 		}
-		createAndSaveImageInfo(ctx, imagename)
+		imageinfos[i], err = createAndSaveImageInfo(ctx, imagename)
+		if err != nil {
+			return err
+		}
 		cacheservice.CreateTagListCache(ctx)
 	}
+	catalogContent, err := json.Marshal(&cataloginfoAPIResponse{
+		ImageInfos: imageinfos,
+	})
+	blobCache.CacheCatalogInfo(app, catalogContent)
+
 	return nil
 }
 
@@ -880,7 +890,7 @@ func (app *App) eventBridge(ctx *Context, r *http.Request) notifications.Listene
 func (app *App) nameRequired(r *http.Request) bool {
 	route := mux.CurrentRoute(r)
 	routeName := route.GetName()
-	return route == nil || (routeName != v2.RouteNameBase && routeName != v2.RouteNameCatalog)
+	return route == nil || (routeName != v2.RouteNameBase && routeName != v2.RouteNameCatalog && routeName != v2.RouteNameCatalogInfo)
 }
 
 // apiBase implements a simple yes-man for doing overall checks against the

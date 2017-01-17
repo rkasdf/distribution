@@ -291,6 +291,14 @@ func (c *caches) GetImageInfo(ctx context.Context) ([]byte, error) {
 	return nil, nil
 }
 
+func (c *caches) SaveCatalogInfo(ctx context.Context, content []byte) error {
+	return nil
+}
+
+func (c *caches) GetCatalogInfo(ctx context.Context) ([]byte, error) {
+	return nil, nil
+}
+
 // tags implements remote tagging operations.
 type tags struct {
 	client  *http.Client

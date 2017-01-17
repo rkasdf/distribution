@@ -50,6 +50,10 @@ type CacheService interface {
 
 	InitItem(ctx context.Context, tag string) error
 
+	SaveCatalogInfo(ctx context.Context, content []byte) error
+
+	GetCatalogInfo(ctx context.Context) ([]byte, error)
+
 	// Get(ctx context.Context, tag string) (Descriptor, error)
 
 	// // Tag associates the tag with the provided descriptor, updating the

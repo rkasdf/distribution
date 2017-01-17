@@ -182,6 +182,11 @@ func (imh *imageManifestHandler) GetImageManifest(w http.ResponseWriter, r *http
 	if imh.Tag != "" && imh.isEnhanced {
 		name := getName(imh)
 		updateDownloadCount(imh, name, imh.Tag)
+		imageInfo, err := createAndSaveImageInfo(imh.Context, name)
+		if err == nil {
+			updateCatalogInfo(imh.Context, imageInfo)
+		}
+
 	}
 
 	w.Header().Set("Content-Type", ct)
@@ -422,7 +427,10 @@ func (imh *imageManifestHandler) PutImageManifest(w http.ResponseWriter, r *http
 		cacheservice.InitItem(imh, imh.Tag)
 		name := getName(imh)
 		createAndSaveTagInfo(imh, name)
-		createAndSaveImageInfo(imh.Context, name)
+		imageInfo, err := createAndSaveImageInfo(imh.Context, name)
+		if err == nil {
+			updateCatalogInfo(imh.Context, imageInfo)
+		}
 
 	}
 

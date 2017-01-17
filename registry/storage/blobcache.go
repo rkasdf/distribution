@@ -393,6 +393,22 @@ func (bc *blobCache) InitItem(ctx context.Context, name, tag string) error {
 	return nil
 }
 
+func (bc *blobCache) CacheCatalogInfo(ctx context.Context, content []byte) error {
+	path, err := pathFor(catalogInfoPathSpec{})
+	if err != nil {
+		return err
+	}
+	return bc.driver.PutContent(ctx, path, content)
+}
+
+func (bc *blobCache) GetCatalogInfo(ctx context.Context) ([]byte, error) {
+	path, err := pathFor(catalogInfoPathSpec{})
+	if err != nil {
+		return nil, err
+	}
+	return bc.driver.GetContent(ctx, path)
+}
+
 func initItemInfo(ctx context.Context, bc *blobCache, path string) error {
 	_, err := bc.driver.GetContent(ctx, path)
 	if err != nil {

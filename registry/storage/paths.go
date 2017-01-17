@@ -190,6 +190,9 @@ func pathFor(spec pathSpec) (string, error) {
 	case catalogCachePathSpec:
 		return path.Join(append(repoPrefix, "catalog.json")...), nil
 
+	case catalogInfoPathSpec:
+		return path.Join(append(repoPrefix, "info.json")...), nil
+
 	case tagListCachePathSpec:
 		root, err := pathFor(manifestTagsPathSpec{
 			name: v.name,
@@ -359,6 +362,11 @@ type catalogCachePathSpec struct {
 }
 
 func (catalogCachePathSpec) pathSpec() {}
+
+type catalogInfoPathSpec struct {
+}
+
+func (catalogInfoPathSpec) pathSpec() {}
 
 type tagListCachePathSpec struct {
 	name string

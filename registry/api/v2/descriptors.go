@@ -2135,6 +2135,47 @@ var routeDescriptors = []RouteDescriptor{
 			},
 		},
 	},
+	{
+		Name:        RouteNameCatalogInfo,
+		Path:        "/v2/cataloginfo",
+		Entity:      "cataloginfo",
+		Description: "List a set of available repositories in the local registry cluster. Does not provide any indication of what may be available upstream. Applications can only determine if a repository is available but not if it is not available.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Retrieve a sorted, json list of repositories available in the registry.",
+				Requests: []RequestDescriptor{
+					{
+						Name:        "Catalog Fetch",
+						Description: "Request an unabridged list of repositories available.  The implementation may impose a maximum limit and return a partial set with pagination links.",
+						Successes: []ResponseDescriptor{
+							{
+								Description: "Returns the unabridged list of repositories as a json response.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									{
+										Name:        "Content-Length",
+										Type:        "integer",
+										Description: "Length of the JSON response body.",
+										Format:      "<length>",
+									},
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format: `{
+	"imageinfos": [
+		<imageinfoBody>,
+		...
+	]
+}`,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 var routeDescriptorsMap map[string]RouteDescriptor

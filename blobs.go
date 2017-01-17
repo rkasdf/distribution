@@ -232,6 +232,8 @@ type BlobWriter interface {
 type BlobCache interface {
 	// CacheCatalog will cache the registry catalog.
 	CacheCatalog(ctx context.Context, content []byte) error
+	CacheCatalogInfo(ctx context.Context, content []byte) error
+	GetCatalogInfo(ctx context.Context) ([]byte, error)
 	// GetCatalog will get the cache in the storage.
 	GetCatalog(ctx context.Context) ([]byte, error)
 	// CacheTagList will cache the taglist in the storage.

@@ -221,3 +221,11 @@ func (cs *cacheStore) InitItem(ctx context.Context, tag string) error {
 	name := cs.repository.Named().Name()
 	return cs.blobCache.InitItem(ctx, name, tag)
 }
+
+func (cs *cacheStore) SaveCatalogInfo(ctx context.Context, content []byte) error {
+	return cs.blobCache.CacheCatalogInfo(ctx, content)
+}
+
+func (cs *cacheStore) GetCatalogInfo(ctx context.Context) ([]byte, error) {
+	return cs.blobCache.GetCatalogInfo(ctx)
+}
