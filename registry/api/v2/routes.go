@@ -12,7 +12,7 @@ const (
 	RouteNameBlobUpload      = "blob-upload"
 	RouteNameBlobUploadChunk = "blob-upload-chunk"
 	RouteNameCatalog         = "catalog"
-	RouteNameCatalogInfo         = "cataloginfo"
+	RouteNameCatalogInfo     = "cataloginfo"
 	RouteNameTagInfo         = "taginfo"
 	RouteNameImageInfo       = "imageinfo"
 	RouteNameImageItemList   = "imageitemlist"

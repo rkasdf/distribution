@@ -285,11 +285,16 @@ func updateCatalogInfo(ctx *Context, imageInfo imageinfoAPIResponse) error {
 	if err = json.Unmarshal(content, &cataloginfo); err != nil {
 		return err
 	}
+	flag := false
 	for i, image := range cataloginfo.ImageInfos {
 		if image.Name == imageInfo.Name {
 			cataloginfo.ImageInfos[i] = imageInfo
+			flag = true
 			break
 		}
+	}
+	if !flag {
+		cataloginfo.ImageInfos = append(cataloginfo.ImageInfos, imageInfo)
 	}
 	if content, err = json.Marshal(cataloginfo); err != nil {
 		return err

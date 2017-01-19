@@ -1,11 +1,16 @@
 FROM golang:1.6-alpine
 
+RUN apk add --update tzdata && \
+    rm /etc/localtime && \
+    ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    rm -rf /var/cache/apk/*
+
 ENV DISTRIBUTION_DIR /go/src/github.com/docker/distribution
 ENV DOCKER_BUILDTAGS include_oss include_gcs
 
 WORKDIR $DISTRIBUTION_DIR
 COPY . $DISTRIBUTION_DIR
-COPY cmd/registry/config-dev.yml /etc/docker/registry/config.yml
+COPY cmd/registry/config-example.yml /etc/docker/registry/config.yml
 
 RUN set -ex \
     && apk add --no-cache make git

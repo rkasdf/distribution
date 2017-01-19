@@ -392,7 +392,7 @@ func (app *App) updateCache() error {
 	repos := make([]string, cachedMaxEntries)
 
 	filled, err := app.registry.Repositories(app, repos, "")
-	if err != nil && err != io.EOF {
+	if err != nil && err != io.EOF && filled != 0 {
 		return err
 	}
 	blobCache := app.registry.BlobCache()
