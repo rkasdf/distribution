@@ -1,5 +1,7 @@
 FROM golang:1.6-alpine
 
+RUN echo "http://mirrors.ustc.edu.cn/alpine/v3.4/main/" > /etc/apk/repositories
+
 RUN apk add --update tzdata && \
     rm /etc/localtime && \
     ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \

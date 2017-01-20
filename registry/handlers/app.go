@@ -411,7 +411,8 @@ func (app *App) updateCache() error {
 		nameRef, err := reference.WithName(imagename)
 		repository, err := app.registry.Repository(app.Context, nameRef)
 		if err != nil {
-			return err
+			ctxu.GetLogger(app).Errorf(err.Error())
+			continue
 		}
 		ctx := &Context{
 			App:        app,
@@ -419,24 +420,34 @@ func (app *App) updateCache() error {
 			Repository: repository,
 		}
 		if err != nil {
-			return err
+			ctxu.GetLogger(app).Errorf(err.Error())
+			continue
 		}
 		tagserivce := repository.Tags(ctx)
 		cacheservice := repository.Caches(ctx)
 		tags, err := tagserivce.All(ctx)
 		if err != nil {
-			return err
+			ctxu.GetLogger(app).Errorf(err.Error())
+			continue
 		}
+		cnum := make(chan int, len(tags))
 		for _, tag := range tags {
-			imh := &imageManifestHandler{
-				Context: ctx,
-				Tag:     tag,
-			}
-			createAndSaveTagInfo(imh, imagename)
+			go func() {
+				imh := &imageManifestHandler{
+					Context: ctx,
+					Tag:     tag,
+				}
+				createAndSaveTagInfo(imh, imagename)
+				cnum <- 1
+			}()
+		}
+		for i := 0; i < len(tags); i++ {
+			<-cnum
 		}
 		imageinfos[i], err = createAndSaveImageInfo(ctx, imagename)
 		if err != nil {
-			return err
+			ctxu.GetLogger(app).Errorf(err.Error())
+			continue
 		}
 		cacheservice.CreateTagListCache(ctx)
 	}

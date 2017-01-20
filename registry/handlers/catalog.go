@@ -17,7 +17,7 @@ import (
 
 const maximumReturnedEntries = 100
 
-const cachedMaxEntries = 100000
+const cachedMaxEntries = 100000000
 
 type catalog struct {
 	Repositories []string `json:"repositories"`
@@ -56,7 +56,7 @@ func (ch *catalogHandler) GetCatalog(w http.ResponseWriter, r *http.Request) {
 		cacheservice := ch.App.registry.BlobCache()
 		content, err := cacheservice.GetCatalog(ch)
 
-		if err == nil && maxEntries <= cachedMaxEntries {
+		if err == nil {
 			var c catalog
 			err = json.Unmarshal(content, &c)
 			if err != nil {
@@ -65,28 +65,30 @@ func (ch *catalogHandler) GetCatalog(w http.ResponseWriter, r *http.Request) {
 			}
 			cacherepos := c.Repositories
 			var start, end int
-			if len(cacherepos) < maxEntries {
-				maxEntries = len(cacherepos)
-			}
-			if lastEntry != "" {
-				start, end = maxEntries, maxEntries
-				for index, name := range cacherepos {
-					if strings.EqualFold(string(name), lastEntry) {
-						start = index
-						break
+			if len(cacherepos) <= maxEntries {
+				if len(cacherepos) < cachedMaxEntries {
+					maxEntries = len(cacherepos)
+					if lastEntry != "" {
+						start, end = maxEntries, maxEntries
+						for index, name := range cacherepos {
+							if strings.EqualFold(string(name), lastEntry) {
+								start = index
+								break
+							}
+						}
+					} else {
+						start, end = 0, maxEntries
 					}
+					enc := json.NewEncoder(w)
+					if err := enc.Encode(catalogAPIResponse{
+						Repositories: cacherepos[start:end],
+					}); err != nil {
+						ch.Errors = append(ch.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+						return
+					}
+					return
 				}
-			} else {
-				start, end = 0, maxEntries
-			}
-			enc := json.NewEncoder(w)
-			if err := enc.Encode(catalogAPIResponse{
-				Repositories: cacherepos[start:end],
-			}); err != nil {
-				ch.Errors = append(ch.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-				return
-			}
-			return
+			
 		}
 	}
 
