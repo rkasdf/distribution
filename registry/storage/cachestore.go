@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync"
 
 	"strings"
 
@@ -34,7 +35,11 @@ type tagList struct {
 	Tags []string `json:"tags"`
 }
 
+var catalogLock sync.RWMutex
+
 func (cs *cacheStore) CreateCatalogCache(ctx context.Context, size int) error {
+	catalogLock.Lock()
+	defer catalogLock.Unlock()
 	if size < maxSize {
 		size = maxSize
 	}
@@ -50,6 +55,43 @@ func (cs *cacheStore) CreateCatalogCache(ctx context.Context, size int) error {
 		return err
 	}
 	return cs.blobCache.CacheCatalog(ctx, content)
+}
+
+func (cs *cacheStore) UpdateCatalogCache(ctx context.Context, imageName string) error {
+	catalogLock.Lock()
+	defer catalogLock.Unlock()
+	repos, err := cs.GetCatalog(ctx)
+	if err != nil {
+		return cs.CreateCatalogCache(ctx, 1)
+	}
+	begin, end := 0, len(repos)-1
+	for begin < end {
+		middle := begin + (end-begin)/2
+		ret := strings.Compare(repos[middle], imageName)
+		if ret > 0 {
+			end = middle - 1
+		} else if ret < 0 {
+			begin = middle + 1
+		} else {
+			return nil
+		}
+	}
+	flag := begin
+	if strings.Compare(repos[begin], imageName) < 0 {
+		flag++
+	} else if strings.Compare(repos[begin], imageName) == 0 {
+		return nil
+	}
+	tmp := append([]string{}, repos[flag:]...)
+	repos = append(append(repos[:flag], imageName), tmp...)
+	content, err := json.Marshal(catalog{
+		Repositories: repos,
+	})
+	if err != nil {
+		return err
+	}
+	return cs.blobCache.CacheCatalog(ctx, content)
+
 }
 
 func (cs *cacheStore) CreateTagListCache(ctx context.Context) error {

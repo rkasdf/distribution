@@ -48,6 +48,8 @@ const randomSecretSize = 32
 // defaultCheckInterval is the default time in between health checks
 const defaultCheckInterval = 10 * time.Second
 
+const defaultUpdateCatalogCacheInterval = 5 * time.Minute
+
 // App is a global registry application object. Shared resources can be placed
 // on this object that will be accessible from all requests. Any writable
 // fields should be protected.
@@ -321,6 +323,20 @@ func (app *App) RegisterHealthChecks(healthRegistries ...*health.Registry) {
 		healthRegistry = healthRegistries[0]
 	}
 
+	if app.isEnhanced {
+		interval := defaultUpdateCatalogCacheInterval
+		catalogCacheUpdater := func() error {
+			ctxu.GetLogger(app).Infof("Start to create catalog cache.")
+			repos := make([]string, cachedMaxEntries)
+			_, err := app.createCatalogCache(repos)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		healthRegistry.RegisterPeriodicFunc("catalog_cache_"+app.Config.Storage.Type(), interval, catalogCacheUpdater)
+	}
+
 	if app.Config.Health.StorageDriver.Enabled {
 		interval := app.Config.Health.StorageDriver.Interval
 		if interval == 0 {
@@ -388,22 +404,28 @@ func (app *App) RegisterHealthChecks(healthRegistries ...*health.Registry) {
 	}
 }
 
-func (app *App) updateCache() error {
-	repos := make([]string, cachedMaxEntries)
-
+func (app *App) createCatalogCache(repos []string) (int, error) {
 	filled, err := app.registry.Repositories(app, repos, "")
 	if err != nil && err != io.EOF && filled != 0 {
-		return err
+		return 0, err
 	}
 	blobCache := app.registry.BlobCache()
 	content, err := json.Marshal(catalog{
 		Repositories: repos[0:filled],
 	})
 	if err != nil {
+		return 0, err
+	}
+	return filled, blobCache.CacheCatalog(app, content)
+}
+
+func (app *App) updateCache() error {
+	repos := make([]string, cachedMaxEntries)
+
+	filled, err := app.createCatalogCache(repos)
+	if err != nil {
 		return err
 	}
-	blobCache.CacheCatalog(app, content)
-
 	imageinfos := make([]imageinfoAPIResponse, filled)
 
 	for i := 0; i < filled; i++ {
@@ -454,6 +476,7 @@ func (app *App) updateCache() error {
 	catalogContent, err := json.Marshal(&cataloginfoAPIResponse{
 		ImageInfos: imageinfos,
 	})
+	blobCache := app.registry.BlobCache()
 	blobCache.CacheCatalogInfo(app, catalogContent)
 
 	return nil

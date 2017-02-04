@@ -215,6 +215,10 @@ type caches struct {
 func (c *caches) CreateCatalogCache(ctx context.Context, size int) error {
 	return nil
 }
+
+func (c *caches) UpdateCatalogCache(ctx context.Context, imageName string) error {
+	return nil
+}
 func (c *caches) CreateTagListCache(ctx context.Context) error {
 	return nil
 }

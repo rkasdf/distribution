@@ -65,30 +65,33 @@ func (ch *catalogHandler) GetCatalog(w http.ResponseWriter, r *http.Request) {
 			}
 			cacherepos := c.Repositories
 			var start, end int
-			if len(cacherepos) <= maxEntries {
-				if len(cacherepos) < cachedMaxEntries {
-					maxEntries = len(cacherepos)
-					if lastEntry != "" {
-						start, end = maxEntries, maxEntries
-						for index, name := range cacherepos {
-							if strings.EqualFold(string(name), lastEntry) {
-								start = index
-								break
-							}
+			if len(cacherepos) <= cachedMaxEntries || maxEntries < cachedMaxEntries {
+				if len(cacherepos) < maxEntries {
+					end = len(cacherepos)
+				} else {
+					end = maxEntries
+				}
+				if lastEntry != "" {
+					start = maxEntries
+					for index, name := range cacherepos {
+						if strings.EqualFold(string(name), lastEntry) {
+							start = index
+							break
 						}
-					} else {
-						start, end = 0, maxEntries
 					}
-					enc := json.NewEncoder(w)
-					if err := enc.Encode(catalogAPIResponse{
-						Repositories: cacherepos[start:end],
-					}); err != nil {
-						ch.Errors = append(ch.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-						return
-					}
+				} else {
+					start = 0
+				}
+				enc := json.NewEncoder(w)
+				if err := enc.Encode(catalogAPIResponse{
+					Repositories: cacherepos[start:end],
+				}); err != nil {
+					ch.Errors = append(ch.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 					return
 				}
-			
+				return
+			}
+
 		}
 	}
 

@@ -12,6 +12,8 @@ type CacheService interface {
 	// catalog api will have a fast speed.
 	CreateCatalogCache(ctx context.Context, size int) error
 
+	UpdateCatalogCache(ctx context.Context, imageName string) error
+
 	CreateTagListCache(ctx context.Context) error
 
 	DeleteTagFromTagListCache(ctx context.Context, tag string) error

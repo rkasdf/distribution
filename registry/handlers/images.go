@@ -227,7 +227,7 @@ func getTagManifests(imh *imageManifestHandler) (distribution.Manifest, distribu
 	var convertedManifets distribution.Manifest
 	if imh.Tag != "" && isSchema2 {
 		// Rewrite manifest in schema1 format
-		ctxu.GetLogger(imh).Infof("rewriting manifest %s in schema1 format to support old client", imh.Digest.String())
+		ctxu.GetLogger(imh).Debugf("rewriting manifest %s in schema1 format to support old client", imh.Digest.String())
 
 		convertedManifets, err = imh.convertSchema2Manifest(schema2Manifest)
 		if err != nil {
@@ -235,7 +235,7 @@ func getTagManifests(imh *imageManifestHandler) (distribution.Manifest, distribu
 		}
 	} else if imh.Tag != "" && isManifestList {
 		// Rewrite manifest in schema1 format
-		ctxu.GetLogger(imh).Infof("rewriting manifest list %s in schema1 format to support old client", imh.Digest.String())
+		ctxu.GetLogger(imh).Debugf("rewriting manifest list %s in schema1 format to support old client", imh.Digest.String())
 
 		// Find the image manifest corresponding to the default
 		// platform
@@ -422,15 +422,26 @@ func (imh *imageManifestHandler) PutImageManifest(w http.ResponseWriter, r *http
 	// to add some info.
 	if imh.isEnhanced && imh.Tag != "" {
 		cacheservice := imh.Repository.Caches(imh)
+		ctxu.GetLogger(imh).Infof("Begin create cache")
 		cacheservice.CreateTagListCache(imh)
-		cacheservice.CreateCatalogCache(imh, 1)
-		cacheservice.InitItem(imh, imh.Tag)
+		ctxu.GetLogger(imh).Infof("Finish create tag list cache")
 		name := getName(imh)
+		cacheservice.UpdateCatalogCache(imh, name)
+		ctxu.GetLogger(imh).Infof("Finish create catalog cache")
+		cacheservice.InitItem(imh, imh.Tag)
+
 		createAndSaveTagInfo(imh, name)
+		ctxu.GetLogger(imh).Infof("Finish create tag info")
+
 		imageInfo, err := createAndSaveImageInfo(imh.Context, name)
+		ctxu.GetLogger(imh).Infof("Finish create image info")
+
 		if err == nil {
 			updateCatalogInfo(imh.Context, imageInfo)
+			ctxu.GetLogger(imh).Infof("Finish update cataloginfo cache")
+
 		}
+		ctxu.GetLogger(imh).Infof("Finish create all cache")
 
 	}
 
