@@ -485,18 +485,21 @@ func (imh *imageManifestHandler) DeleteImageManifest(w http.ResponseWriter, r *h
 		imh.Errors = append(imh.Errors, err)
 		return
 	}
-
-	if imh.Tag != "" && imh.isEnhanced {
-		cacheservice := imh.Repository.Caches(imh)
-		for _, tag := range referencedTags {
-			if err := tagService.Untag(imh, tag); err != nil {
-				imh.Errors = append(imh.Errors, err)
-				return
-			}
+	cacheservice := imh.Repository.Caches(imh)
+	for _, tag := range referencedTags {
+		if err := tagService.Untag(imh, tag); err != nil {
+			imh.Errors = append(imh.Errors, err)
+			return
+		}
+		if imh.isEnhanced {
 			cacheservice.DeleteTagFromTagListCache(imh, tag)
 			cacheservice.DeleteAllTagItems(imh, tag)
+			imageInfo, err := createAndSaveImageInfo(imh.Context, imh.Repository.Named().Name())
+			if err == nil {
+				updateCatalogInfo(imh.Context, imageInfo)
+			}
 		}
-	}
 
+	}
 	w.WriteHeader(http.StatusAccepted)
 }

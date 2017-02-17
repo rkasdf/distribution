@@ -46,13 +46,14 @@ func (ch *catalogHandler) GetCatalog(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	lastEntry := q.Get("last")
+	cached := q.Get("cache")
 	maxEntries, err := strconv.Atoi(q.Get("n"))
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err != nil || maxEntries < 0 {
+		maxEntries = maximumReturnedEntries
+	}
 
-	if ch.isEnhanced {
-		if err != nil || maxEntries < 0 {
-			maxEntries = maximumReturnedEntries
-		}
+	if ch.isEnhanced && !strings.EqualFold(cached, "0") {
 		cacheservice := ch.App.registry.BlobCache()
 		content, err := cacheservice.GetCatalog(ch)
 

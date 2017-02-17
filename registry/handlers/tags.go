@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"strings"
+
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
@@ -35,9 +37,11 @@ type tagsAPIResponse struct {
 // GetTags returns a json list of tags for a specific image name.
 func (th *tagsHandler) GetTags(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+	q := r.URL.Query()
+	cached := q.Get("cache")
 	var err error
 	var tags []string
-	if th.isEnhanced {
+	if th.isEnhanced && !strings.EqualFold(cached, "0") {
 		cacheService := th.Repository.Caches(th)
 		tags, err = cacheService.GetTagList(th)
 		_, pathNotFound := err.(driver.PathNotFoundError)
