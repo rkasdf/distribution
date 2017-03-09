@@ -255,6 +255,7 @@ type BlobCache interface {
 	DeleteAllImageItems(ctx context.Context, name string) error
 	DeleteTagItem(ctx context.Context, name, tag, item string) error
 	DeleteAllTagItems(ctx context.Context, name, tag string) error
+	DeleteImageRepository(ctx context.Context, name string) error
 }
 
 // BlobService combines the operations to access, read and write blobs. This

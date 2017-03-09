@@ -409,6 +409,16 @@ func (bc *blobCache) GetCatalogInfo(ctx context.Context) ([]byte, error) {
 	return bc.driver.GetContent(ctx, path)
 }
 
+func (bc *blobCache) DeleteImageRepository(ctx context.Context, name string) error {
+	path, err := pathFor(imageRootPathSpec{
+		name: name,
+	})
+	if err != nil {
+		return err
+	}
+	return bc.driver.Delete(ctx, path)
+}
+
 func initItemInfo(ctx context.Context, bc *blobCache, path string) error {
 	_, err := bc.driver.GetContent(ctx, path)
 	if err != nil {

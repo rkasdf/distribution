@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,7 +26,8 @@ func imageinfoDispatcher(ctx *Context, r *http.Request) http.Handler {
 		Context: ctx,
 	}
 	return handlers.MethodHandler{
-		"GET": http.HandlerFunc(imageinfoHandler.GetImageInfo),
+		"GET":    http.HandlerFunc(imageinfoHandler.GetImageInfo),
+		"DELETE": http.HandlerFunc(imageinfoHandler.DeleteImageRepository),
 	}
 }
 
@@ -86,6 +88,21 @@ func (ih *infoHandler) GetImageInfo(w http.ResponseWriter, r *http.Request) {
 		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		return
 	}
+
+}
+
+func (ih *infoHandler) DeleteImageRepository(w http.ResponseWriter, r *http.Request) {
+	cacheservice := ih.Repository.Caches(ih)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	err := cacheservice.DeleteImageRepository(ih)
+	if err != nil {
+		ih.Errors = append(ih.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
+	name := ih.Repository.Named().Name()
+	deleteImageFromCatalogInfo(ih.Context, name)
+	cacheservice.DeleteImageFromCatalogCache(ih, name)
+	w.WriteHeader(http.StatusAccepted)
 
 }
 
@@ -272,6 +289,33 @@ func createAndSaveTagInfo(imh *imageManifestHandler, name string) (taginfoAPIRes
 	return response, nil
 
 }
+func deleteImageFromCatalogInfo(ctx *Context, name string) error {
+	catalogLock.Lock()
+	defer catalogLock.Unlock()
+	cacheService := ctx.Repository.Caches(ctx)
+	content, err := cacheService.GetCatalogInfo(ctx)
+	if err != nil {
+		return err
+	}
+	var cataloginfo cataloginfoAPIResponse
+	if err = json.Unmarshal(content, &cataloginfo); err != nil {
+		return err
+	}
+	flag := -1
+	for i, image := range cataloginfo.ImageInfos {
+		if image.Name == name {
+			flag = i
+			break
+		}
+	}
+	if flag > -1 {
+		cataloginfo.ImageInfos = append(cataloginfo.ImageInfos[0:flag], cataloginfo.ImageInfos[flag+1:]...)
+	}
+	if content, err = json.Marshal(cataloginfo); err != nil {
+		return err
+	}
+	return cacheService.SaveCatalogInfo(ctx, content)
+}
 
 func updateCatalogInfo(ctx *Context, imageInfo imageinfoAPIResponse) error {
 	catalogLock.Lock()
@@ -285,16 +329,28 @@ func updateCatalogInfo(ctx *Context, imageInfo imageinfoAPIResponse) error {
 	if err = json.Unmarshal(content, &cataloginfo); err != nil {
 		return err
 	}
-	flag := false
-	for i, image := range cataloginfo.ImageInfos {
-		if image.Name == imageInfo.Name {
-			cataloginfo.ImageInfos[i] = imageInfo
-			flag = true
-			break
+	begin, end := 0, len(cataloginfo.ImageInfos)-1
+	imageName := imageInfo.Name
+	for begin < end {
+		middle := begin + (end-begin)/2
+		ret := strings.Compare(cataloginfo.ImageInfos[middle].Name, imageName)
+		if ret > 0 {
+			end = middle - 1
+		} else if ret < 0 {
+			begin = middle + 1
+		} else {
+			return nil
 		}
 	}
-	if !flag {
-		cataloginfo.ImageInfos = append(cataloginfo.ImageInfos, imageInfo)
+	flag := begin
+	if strings.Compare(cataloginfo.ImageInfos[begin].Name, imageName) < 0 {
+		flag++
+	}
+	if strings.Compare(cataloginfo.ImageInfos[begin].Name, imageName) == 0 {
+		cataloginfo.ImageInfos[begin] = imageInfo
+	} else {
+		tmp := append([]imageinfoAPIResponse{}, cataloginfo.ImageInfos[flag:]...)
+		cataloginfo.ImageInfos = append(append(cataloginfo.ImageInfos[:flag], imageInfo), tmp...)
 	}
 	if content, err = json.Marshal(cataloginfo); err != nil {
 		return err

@@ -94,6 +94,39 @@ func (cs *cacheStore) UpdateCatalogCache(ctx context.Context, imageName string) 
 
 }
 
+func (cs *cacheStore) DeleteImageFromCatalogCache(ctx context.Context, imageName string) error {
+	repos, err := cs.GetCatalog(ctx)
+	if err != nil {
+		return cs.CreateCatalogCache(ctx, 1)
+	}
+	begin, end := 0, len(repos)-1
+	flag := -1
+	for begin < end {
+		middle := begin + (end-begin)/2
+		ret := strings.Compare(repos[middle], imageName)
+		if ret > 0 {
+			end = middle - 1
+		} else if ret < 0 {
+			begin = middle + 1
+		} else {
+			flag = middle
+			break
+		}
+	}
+	if flag > -1 || strings.Compare(repos[begin], imageName) == 0 {
+		repos = append(repos[0:begin], repos[begin+1:]...)
+		content, err := json.Marshal(catalog{
+			Repositories: repos,
+		})
+		if err != nil {
+			return err
+		}
+		return cs.blobCache.CacheCatalog(ctx, content)
+	}
+	return nil
+
+}
+
 func (cs *cacheStore) CreateTagListCache(ctx context.Context) error {
 	ts := cs.repository.Tags(ctx)
 	tags, err := ts.All(ctx)
@@ -270,4 +303,9 @@ func (cs *cacheStore) SaveCatalogInfo(ctx context.Context, content []byte) error
 
 func (cs *cacheStore) GetCatalogInfo(ctx context.Context) ([]byte, error) {
 	return cs.blobCache.GetCatalogInfo(ctx)
+}
+
+func (cs *cacheStore) DeleteImageRepository(ctx context.Context) error {
+	name := cs.repository.Named().Name()
+	return cs.blobCache.DeleteImageRepository(ctx, name)
 }

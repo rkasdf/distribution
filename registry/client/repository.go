@@ -303,6 +303,14 @@ func (c *caches) GetCatalogInfo(ctx context.Context) ([]byte, error) {
 	return nil, nil
 }
 
+func (c *caches) DeleteImageRepository(ctx context.Context) error {
+	return nil
+}
+
+func (c *caches) DeleteImageFromCatalogCache(ctx context.Context, imageName string) error {
+	return nil
+}
+
 // tags implements remote tagging operations.
 type tags struct {
 	client  *http.Client

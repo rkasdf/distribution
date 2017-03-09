@@ -1,11 +1,4 @@
-FROM golang:1.6-alpine
-
-RUN echo "http://mirrors.ustc.edu.cn/alpine/v3.4/main/" > /etc/apk/repositories
-
-RUN apk add --update tzdata && \
-    rm /etc/localtime && \
-    ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    rm -rf /var/cache/apk/*
+FROM private-registry.sohucs.com/domeos-pub/golang:1.7.4-alpine
 
 ENV DISTRIBUTION_DIR /go/src/github.com/docker/distribution
 ENV DOCKER_BUILDTAGS include_oss include_gcs

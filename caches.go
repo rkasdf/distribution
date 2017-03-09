@@ -56,6 +56,10 @@ type CacheService interface {
 
 	GetCatalogInfo(ctx context.Context) ([]byte, error)
 
+	DeleteImageRepository(ctx context.Context) error
+
+	DeleteImageFromCatalogCache(ctx context.Context, imageName string) error
+
 	// Get(ctx context.Context, tag string) (Descriptor, error)
 
 	// // Tag associates the tag with the provided descriptor, updating the
