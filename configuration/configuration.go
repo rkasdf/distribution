@@ -19,6 +19,12 @@ type Configuration struct {
 	// Version is the version which defines the format of the rest of the configuration
 	Version Version `yaml:"version"`
 
+	Enhanced struct {
+		Disable    bool `yaml:"disable"`
+		StartCheck bool `yaml:"startCheck"`
+		Auth       bool `yaml:"auth"`
+	}
+
 	// Log supports setting various parameters related to the logging
 	// subsystem.
 	Log struct {

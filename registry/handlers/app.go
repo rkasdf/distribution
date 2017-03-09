@@ -99,28 +99,28 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		Context:    ctx,
 		router:     v2.RouterWithPrefix(config.HTTP.Prefix),
 		isCache:    config.Proxy.RemoteURL != "",
-		isEnhanced: true,
+		isEnhanced: !config.Enhanced.Disable,
 	}
 
 	// Register the handler dispatchers.
 	app.register(v2.RouteNameBase, func(ctx *Context, r *http.Request) http.Handler {
 		return http.HandlerFunc(apiBase)
-	})
-	app.register(v2.RouteNameManifest, imageManifestDispatcher)
-	app.register(v2.RouteNameCatalog, catalogDispatcher)
-	app.register(v2.RouteNameTags, tagsDispatcher)
-	app.register(v2.RouteNameBlob, blobDispatcher)
-	app.register(v2.RouteNameBlobUpload, blobUploadDispatcher)
-	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher)
+	}, true)
+	app.register(v2.RouteNameManifest, imageManifestDispatcher, true)
+	app.register(v2.RouteNameCatalog, catalogDispatcher, true)
+	app.register(v2.RouteNameTags, tagsDispatcher, true)
+	app.register(v2.RouteNameBlob, blobDispatcher, true)
+	app.register(v2.RouteNameBlobUpload, blobUploadDispatcher, true)
+	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher, true)
 	// Register the enhanced api
 	if app.isEnhanced {
-		app.register(v2.RouteNameCatalogInfo, cataloginfoDispatcher)
-		app.register(v2.RouteNameTagInfo, taginfoDispatcher)
-		app.register(v2.RouteNameImageInfo, imageinfoDispatcher)
-		app.register(v2.RouteNameImageItem, imageItemDispatcher)
-		app.register(v2.RouteNameImageItemList, imageItemListDispatcher)
-		app.register(v2.RouteNameTagItem, tagItemDispatcher)
-		app.register(v2.RouteNameTagItemList, tagItemListDispatcher)
+		app.register(v2.RouteNameCatalogInfo, cataloginfoDispatcher, config.Enhanced.Auth)
+		app.register(v2.RouteNameTagInfo, taginfoDispatcher, config.Enhanced.Auth)
+		app.register(v2.RouteNameImageInfo, imageinfoDispatcher, config.Enhanced.Auth)
+		app.register(v2.RouteNameImageItem, imageItemDispatcher, config.Enhanced.Auth)
+		app.register(v2.RouteNameImageItemList, imageItemListDispatcher, config.Enhanced.Auth)
+		app.register(v2.RouteNameTagItem, tagItemDispatcher, config.Enhanced.Auth)
+		app.register(v2.RouteNameTagItemList, tagItemListDispatcher, config.Enhanced.Auth)
 	}
 
 	// override the storage driver's UA string for registry outbound HTTP requests
@@ -298,7 +298,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		ctxu.GetLogger(app).Info("Registry configured as a proxy cache to ", config.Proxy.RemoteURL)
 	}
 
-	if app.isEnhanced {
+	if app.isEnhanced && app.Config.Enhanced.StartCheck {
 		err := app.updateCache()
 		if err != nil {
 			panic(err)
@@ -485,7 +485,7 @@ func (app *App) updateCache() error {
 // register a handler with the application, by route name. The handler will be
 // passed through the application filters and context will be constructed at
 // request time.
-func (app *App) register(routeName string, dispatch dispatchFunc) {
+func (app *App) register(routeName string, dispatch dispatchFunc, authorized bool) {
 
 	// TODO(stevvooe): This odd dispatcher/route registration is by-product of
 	// some limitations in the gorilla/mux router. We are using it to keep
@@ -493,7 +493,7 @@ func (app *App) register(routeName string, dispatch dispatchFunc) {
 	// replace it with manual routing and structure-based dispatch for better
 	// control over the request execution.
 
-	app.router.GetRoute(routeName).Handler(app.dispatcher(dispatch))
+	app.router.GetRoute(routeName).Handler(app.dispatcher(dispatch, authorized))
 }
 
 // configureEvents prepares the event sink for action.
@@ -705,7 +705,7 @@ type dispatchFunc func(ctx *Context, r *http.Request) http.Handler
 
 // dispatcher returns a handler that constructs a request specific context and
 // handler, using the dispatch factory function.
-func (app *App) dispatcher(dispatch dispatchFunc) http.Handler {
+func (app *App) dispatcher(dispatch dispatchFunc, authorized bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for headerName, headerValues := range app.Config.HTTP.Headers {
 			for _, value := range headerValues {
@@ -715,9 +715,11 @@ func (app *App) dispatcher(dispatch dispatchFunc) http.Handler {
 
 		context := app.context(w, r)
 
-		if err := app.authorized(w, r, context); err != nil {
-			ctxu.GetLogger(context).Warnf("error authorizing context: %v", err)
-			return
+		if authorized {
+			if err := app.authorized(w, r, context); err != nil {
+				ctxu.GetLogger(context).Warnf("error authorizing context: %v", err)
+				return
+			}
 		}
 
 		// Add username to request logging
