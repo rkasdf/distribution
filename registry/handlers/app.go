@@ -107,13 +107,13 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		return http.HandlerFunc(apiBase)
 	}, true)
 	app.register(v2.RouteNameManifest, imageManifestDispatcher, true)
-	app.register(v2.RouteNameCatalog, catalogDispatcher, true)
 	app.register(v2.RouteNameTags, tagsDispatcher, true)
 	app.register(v2.RouteNameBlob, blobDispatcher, true)
 	app.register(v2.RouteNameBlobUpload, blobUploadDispatcher, true)
 	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher, true)
 	// Register the enhanced api
 	if app.isEnhanced {
+		app.register(v2.RouteNameCatalog, catalogDispatcher, config.Enhanced.Auth)
 		app.register(v2.RouteNameCatalogInfo, cataloginfoDispatcher, config.Enhanced.Auth)
 		app.register(v2.RouteNameTagInfo, taginfoDispatcher, config.Enhanced.Auth)
 		app.register(v2.RouteNameImageInfo, imageinfoDispatcher, config.Enhanced.Auth)
@@ -298,7 +298,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		ctxu.GetLogger(app).Info("Registry configured as a proxy cache to ", config.Proxy.RemoteURL)
 	}
 
-	if app.isEnhanced && app.Config.Enhanced.StartCheck {
+	if app.Config.Enhanced.StartCheck {
 		err := app.updateCache()
 		if err != nil {
 			panic(err)

@@ -21,7 +21,7 @@ type Configuration struct {
 
 	Enhanced struct {
 		Disable    bool `yaml:"disable"`
-		StartCheck bool `yaml:"startCheck"`
+		StartCheck bool `yaml:"startcheck"`
 		Auth       bool `yaml:"auth"`
 	}
 
